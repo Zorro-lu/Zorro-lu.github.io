@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>TinyUSB</title>
+    <script src="serial.js"></script>
+    <script src="algorithm.js"></script>
+    <script src="application.js"></script>
+    <link rel="stylesheet" href="application.css">
+  </head>
+  <body>
+    <div class="main-content">
+      <h1>TinyUSB - WebUSB Serial Example</h1>
+      <div class="connect-container">
+        <button id="connect" class="button black">Connect</button>
+        <span id="status"></span>
+      </div>
+      <div class="container">
+        <div class="sender">
+          <!-- <div class="lines-header">Sender</div> -->
+          <div class="form-section">
+            <h3>Gain</h3>
+            <label for="name">Gain (-20~20): </label>
+            <input type="number" id="gain" name="gain" min="-20" max="20"/>
+          </div>
+
+          <div class="form-section">
+            <h3>DRC</h3>
+            <label for="title">Drc Attack Time (4~200): </label>
+            <input type="number" id="DrcAttackTime" name="DRC_Attack_Time" min="4" max="200"/>
+            <br><br><label for="title">DRC Decay Time (4~200): </label>
+            <input type="number" id="DrcDecayTime" name="DRC_Decay_Time" min="4" max="200"/>
+            <br><br><label for="title">DRC Knee Threshold (-30~-10): </label>
+            <input type="number" id="DrcKneeThreshold" name="DRC_Knee_Threshold" min="-30" max="-10"/>
+            <br><br><label for="title">DRC Noise Gate (-80~-40): </label>
+            <input type="number" id="DrcNoiseGate" name="DRC_Noise_Gate" min="-80" max="-40"/>
+            <br><br><label for="title">DRC Slope (0.01~1): </label>
+            <input type="number" id="DrcSlope" name="DRC_Slope" step="0.01" min="0.01" max="1"/>
+          </div>
+
+          <div class="form-section">
+            <h3>AGC</h3>
+            <label for="title">AGC Attack Time (4~200): </label>
+            <input type="number" id="AgcAttackTime" name="AGC_Attack_Time" min="4" max="200"/>
+            <br><br><label for="title">AGC Decay Time (4~200): </label>
+            <input type="number" id="AgcDecayTime" name="AGC_Decay_Time" min="4" max="200"/>
+            <br><br><label for="title">AGC Target (10000~30000): </label>
+            <input type="number" id="AgcTarget" name="AGC_Target" min="10000" max="30000"/>
+          </div>
+
+          <div class="form-section">
+            <button id="submit">Send</button>
+          </div>
+          <div class="form-section">
+            <h3>Record</h3>
+            <br><button id=startRecordButton>Start recording</button><br>
+            <br><button id=stopRecordButton>Stop recording</button><br>
+            <br><button id=parsePcmFile>Parse pcm file</button><br>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+    <pre id=logs></pre>
+  </body>
+</html>
