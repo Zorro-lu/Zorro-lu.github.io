@@ -33,7 +33,7 @@
             <input type="number" id="DrcKneeThreshold" name="DRC_Knee_Threshold" min="-30" max="-10"/>
             <br><br><label for="title">DRC Noise Gate (-80~-40): </label>
             <input type="number" id="DrcNoiseGate" name="DRC_Noise_Gate" min="-80" max="-40"/>
-            <br><br><label for="title">DRC Slope (0.01~1): </label>
+            <br><br><label for="title">DRC Slope (0.01~1.0): </label>
             <input type="number" id="DrcSlope" name="DRC_Slope" step="0.01" min="0.01" max="1"/>
           </div>
 
@@ -41,6 +41,7 @@
             <h3>AGC</h3>
             <label for="title">AGC Attack Time (4~200): </label>
             <input type="number" id="AgcAttackTime" name="AGC_Attack_Time" min="4" max="200"/>
+
             <br><br><label for="title">AGC Decay Time (4~200): </label>
             <input type="number" id="AgcDecayTime" name="AGC_Decay_Time" min="4" max="200"/>
             <br><br><label for="title">AGC Target (10000~30000): </label>
@@ -48,10 +49,82 @@
           </div>
 
           <div class="form-section">
+            <h3>PEQ</h3>
+            <label for="title">Direction: </label>
+                <div>
+                    <input type="radio" id="in" name="direction" value="in" checked/>
+                    <label for="in">IN</label>
+
+                    <input type="radio" id="out" name="direction" value="out"/>
+                    <label for="out">OUT</label>
+                </div>
+            <br><br><label for="title">Band Number (1~9): </label>
+            <input type="number" id="BandNumber" name="Band_Number" min="1" max="9"/>
+            <br><br><label for="title">Band Center Frequency (60~8000): </label>
+            <input type="number" id="band_center_freq_0" name="band_center_freq" min="60" max="8000"/>
+            <input type="number" id="band_center_freq_1" name="band_center_freq" min="60" max="8000"/>
+            <input type="number" id="band_center_freq_2" name="band_center_freq" min="60" max="8000"/>
+            <input type="number" id="band_center_freq_3" name="band_center_freq" min="60" max="8000"/>
+            <input type="number" id="band_center_freq_4" name="band_center_freq" min="60" max="8000"/>
+            <input type="number" id="band_center_freq_5" name="band_center_freq" min="60" max="8000"/>
+            <input type="number" id="band_center_freq_6" name="band_center_freq" min="60" max="8000"/>
+            <input type="number" id="band_center_freq_7" name="band_center_freq" min="60" max="8000"/>
+            <input type="number" id="band_center_freq_8" name="band_center_freq" min="60" max="8000"/>
+            <br><br><label for="title">Band Qfactor (0.1~5.0): </label>
+            <input type="number" id="band_qfractor_0" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <input type="number" id="band_qfractor_1" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <input type="number" id="band_qfractor_2" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <input type="number" id="band_qfractor_3" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <input type="number" id="band_qfractor_4" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <input type="number" id="band_qfractor_5" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <input type="number" id="band_qfractor_6" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <input type="number" id="band_qfractor_7" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <input type="number" id="band_qfractor_8" name="band_qfactor" step="0.1" min="0.1" max="5.0"/>
+            <br><br><label for="title">Band Gain (-10~10): </label>
+            <input type="number" id="band_gain_0" name="band_gain" min="-10" max="10"/>
+            <input type="number" id="band_gain_1" name="band_gain" min="-10" max="10"/>
+            <input type="number" id="band_gain_2" name="band_gain" min="-10" max="10"/>
+            <input type="number" id="band_gain_3" name="band_gain" min="-10" max="10"/>
+            <input type="number" id="band_gain_4" name="band_gain" min="-10" max="10"/>
+            <input type="number" id="band_gain_5" name="band_gain" min="-10" max="10"/>
+            <input type="number" id="band_gain_6" name="band_gain" min="-10" max="10"/>
+            <input type="number" id="band_gain_7" name="band_gain" min="-10" max="10"/>
+            <input type="number" id="band_gain_8" name="band_gain" min="-10" max="10"/>
+          </div>
+
+          <div class="form-section">
+            <h3>Sniffer Audio Data</h3>
+                <div>
+                    <!-- <input type="checkbox" id="ACORE_DSP_GAIN" name="audio" value="true"/>
+                    <label for="ACORE_DSP_GAIN">GAIN</label> -->
+
+                    <input type="checkbox" id="ACORE_DSP_AGC" name="audio" value="true"/>
+                    <label for="ACORE_DSP_AGC">AGC</label>
+
+                    <input type="checkbox" id="ACORE_DSP_DRC" name="audio" value="true"/>
+                    <label for="ACORE_DSP_DRC">DRC</label>
+
+                    <input type="checkbox" id="ACORE_DSP_PEQ_UL" name="audio" value="true"/>
+                    <label for="ACORE_DSP_PEQ_UL">PEQ_UL</label>
+
+                    <input type="checkbox" id="ACORE_DSP_PEQ_DL" name="audio" value="true"/>
+                    <label for="ACORE_DSP_PEQ_DL">PEQ_DL</label>
+
+                    <input type="checkbox" id="ACORE_DSP_AEC" name="audio" value="true"/>
+                    <label for="ACORE_DSP_AEC">AEC</label>
+
+                    <input type="checkbox" id="ACORE_DSP_NS" name="audio" value="true"/>
+                    <label for="ACORE_DSP_NS">NS</label>
+                </div>
+          </div>
+
+          <div class="form-section">
             <button id="submit">Send</button>
           </div>
+
           <div class="form-section">
             <h3>Record</h3>
+            <br><button id=saveAs>Save As...</button><br>
             <br><button id=startRecordButton>Start recording</button><br>
             <br><button id=stopRecordButton>Stop recording</button><br>
             <br><button id=parsePcmFile>Parse pcm file</button><br>

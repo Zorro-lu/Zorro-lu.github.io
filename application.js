@@ -68,13 +68,26 @@
         let agcDecayTime = document.querySelector("#AgcDecayTime").value;
         let agcTarget = document.querySelector("#AgcTarget").value;
         setAgc(port, agcAttackTime, agcDecayTime, agcTarget);
+
+        // PEQ
+        let dir = document.querySelector('input[name="direction"]:checked').value;
+        let bandNumber = document.querySelector("#BandNumber").value;
+        let bandCenterFreq = document.getElementsByName("band_center_freq");
+        let bandQfactor = document.getElementsByName("band_qfactor");
+        let bandGain = document.getElementsByName("band_gain");
+        setPeq(port, dir, bandNumber, bandCenterFreq, bandQfactor, bandGain);
+
+        // Sniffer Audio Data
+        let audio = document.getElementsByName("audio");
+        setSniffer(port, audio);
         }
 
-    // record audio data to a file
-    const startRecordButton = document.querySelector("#startRecordButton")
-    , stopRecordButton = document.querySelector("#stopRecordButton");
+    const saveAs = document.querySelector("#saveAs"),
+        startRecordButton = document.querySelector("#startRecordButton"),
+        stopRecordButton = document.querySelector("#stopRecordButton");
 
-    startRecordButton.addEventListener("click", (async()=>{
+    // select the path of storage
+    saveAs.addEventListener("click", (async()=>{
         const directoryHandle = await window.showDirectoryPicker();
         const fileHandle = await directoryHandle.getFileHandle("audio.pcm", { create: true });
         file = await fileHandle.createWritable();
@@ -82,6 +95,14 @@
         window.file = file;
         stopRecordButton.disabled = !1,
         log("Your microphone audio is being recorded locally.")
+        }
+    ))
+
+    // record audio data to a file
+    startRecordButton.addEventListener("click", (()=>{
+            if (window.file) {
+                snifferActive(port, true);
+            }
         }
     ))
 
