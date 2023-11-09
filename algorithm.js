@@ -20,10 +20,11 @@ let DIRECTION =  {
     OUT:    1,
 };
 
+// The port of algorithm element pad
 let SNIFFER_INDEX = {
-    DEFAULT:    0,
-    MIC    :    1,
-    REFERENCE:  2,
+    PAD_0:  0,  // default port
+    PAD_1:  1,
+    PAD_2:  2,
 };
 
 let SNIFFER_ENBALE_MASK     = 0xFE;
@@ -583,12 +584,11 @@ function snifferEnable(port, obj, enable, value) {
 
         case "ACORE_DSP_AEC_MIC_IN":
             acore_msg.pn_robj[0]    = OBJ.ACORE_DSP_AEC;
-            acore_msg.index[0]      = SNIFFER_INDEX.MIC;
             break;
 
         case "ACORE_DSP_AEC_REF_IN":
             acore_msg.pn_robj[0]    = OBJ.ACORE_DSP_AEC;
-            acore_msg.index[0]      = SNIFFER_INDEX.REFERENCE;
+            acore_msg.index[0]      = SNIFFER_INDEX.PAD_1;
             break;
 
         case "ACORE_DSP_AEC_OUT":

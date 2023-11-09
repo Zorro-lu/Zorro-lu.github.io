@@ -114,6 +114,8 @@
             window.file = null;
         }
 
+        // stop sniffing data
+        snifferActive(port, false);
         stopRecordButton.disabled = !0,
         log("Your microphone audio has been successfully recorded locally.")
         }
