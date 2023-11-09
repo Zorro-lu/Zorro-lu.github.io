@@ -15,6 +15,19 @@ let OBJ =  {
     ACORE_DSP_NS: 13,
     ACORE_DSP: 14,
 };
+let DIRECTION =  {
+    IN:     0,
+    OUT:    1,
+};
+
+let SNIFFER_INDEX = {
+    DEFAULT:    0,
+    MIC    :    1,
+    REFERENCE:  2,
+};
+
+let SNIFFER_ENBALE_MASK     = 0xFE;
+let SNIFFER_DIRECTION_MASK  = 0xFD;
 
 // Big endian to little endian
 function UINT16_TO_BSTREAM(n, p) {
@@ -493,10 +506,9 @@ function setPeq(port, dir, band_num_str, band_center_freq_str, band_qfactor_str,
     }
 }
 
-function snifferEnable(port, obj, state) {
-    let snifferState = 0;
-    // It only have one subblock in the audio core message
-    let numOfSub = 1;
+function snifferEnable(port, obj, enable, value) {
+    // It only has one subblock in the audio core message
+    let numOfSub         = 1;
 
     if (obj.length === 0) {
         return;
@@ -518,13 +530,15 @@ function snifferEnable(port, obj, state) {
 
         block_id: new Uint8Array(2),
         block_len: new Uint8Array(2),
-        enable: new Uint8Array(2),
+        state: new Uint8Array(1),
+        index: new Uint8Array(1),
     };
 
     let sniffer_enable = {
         block_id: new Uint8Array(2),
         block_len: new Uint8Array(2),
-        enable: new Uint8Array(2),
+        state: new Uint8Array(1),
+        index: new Uint8Array(1),
     };
 
     // count prim_spk_settings size
@@ -534,7 +548,6 @@ function snifferEnable(port, obj, state) {
         sniffer_enable_size += array.BYTES_PER_ELEMENT * array.length;
     }
 
-
     // count acore_msg size
     let totalBytes = 0;
     for (let prop in acore_msg) {
@@ -542,27 +555,72 @@ function snifferEnable(port, obj, state) {
         totalBytes += array.BYTES_PER_ELEMENT * array.length;
     }
 
-    if (obj === "ACORE_DSP_GAIN") {
-        acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_GAIN;
-    } else if (obj === "ACORE_DSP_AGC") {
-        acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_AGC;
-    } else if (obj === "ACORE_DSP_DRC") {
-        acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_DRC;
-    } else if (obj === "ACORE_DSP_PEQ_UL") {
-        acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_PEQ_UL;
-    } else if (obj === "ACORE_DSP_PEQ_DL") {
-        acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_PEQ_DL;
-    } else if (obj === "ACORE_DSP_AEC") {
-        acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_AEC;
-    } else if (obj === "ACORE_DSP_NS") {
-        acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_NS;
+    switch (obj) {
+        case "ACORE_DSP_GAIN_IN":
+        case "ACORE_DSP_GAIN_OUT":
+            acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_GAIN;
+            break;
+
+        case "ACORE_DSP_AGC_IN":
+        case "ACORE_DSP_AGC_OUT":
+            acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_AGC;
+            break;
+
+        case "ACORE_DSP_DRC_IN":
+        case "ACORE_DSP_DRC_OUT":
+            acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_DRC;
+            break;
+
+        case "ACORE_DSP_PEQ_UL_IN":
+        case "ACORE_DSP_PEQ_UL_OUT":
+            acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_PEQ_UL;
+            break;
+
+        case "ACORE_DSP_PEQ_DL_IN":
+        case "ACORE_DSP_PEQ_DL_OUT":
+            acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_PEQ_DL;
+            break;
+
+        case "ACORE_DSP_AEC_MIC_IN":
+            acore_msg.pn_robj[0]    = OBJ.ACORE_DSP_AEC;
+            acore_msg.index[0]      = SNIFFER_INDEX.MIC;
+            break;
+
+        case "ACORE_DSP_AEC_REF_IN":
+            acore_msg.pn_robj[0]    = OBJ.ACORE_DSP_AEC;
+            acore_msg.index[0]      = SNIFFER_INDEX.REFERENCE;
+            break;
+
+        case "ACORE_DSP_AEC_OUT":
+            acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_AEC;
+            break;
+
+        case "ACORE_DSP_NS_IN":
+        case "ACORE_DSP_NS_OUT":
+            acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_NS;
+            break;
+
+        default:
+            return;
     }
 
-    if (state === true) {
-        snifferState = 1;
+    // acore_msg.state[0] bit definition
+    // {
+    //     uint8_t  enable    : 1; /**< Sniffer enable flag */
+    //     uint8_t  direction : 1; /**< Sniffer input/output flag */
+    //     uint8_t  reserved  : 6; /**< Reserved */
+    // }
+    if (enable === true) {
+        acore_msg.state[0] = (acore_msg.state[0] & SNIFFER_ENBALE_MASK) | true;
     }
-    else if (state === false) {
-        snifferState = 0;
+    else if (enable === false) {
+        acore_msg.state[0] = (acore_msg.state[0] & SNIFFER_ENBALE_MASK) | false;
+    }
+
+    if (value === "in") {
+        acore_msg.state[0] = (acore_msg.state[0] & SNIFFER_DIRECTION_MASK) | (DIRECTION.IN << 1);
+    } else if (value === "out") {
+        acore_msg.state[0] = (acore_msg.state[0] & SNIFFER_DIRECTION_MASK) | (DIRECTION.OUT << 1);
     }
 
     acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
@@ -573,7 +631,6 @@ function snifferEnable(port, obj, state) {
     UINT16_TO_BSTREAM(numOfSub, acore_msg.num_of_subblocks);
     UINT16_TO_BSTREAM(HAL_Audio_SB_Sniffer_Enable, acore_msg.block_id);
     UINT16_TO_BSTREAM(sniffer_enable_size, acore_msg.block_len);
-    UINT16_TO_BSTREAM(snifferState, acore_msg.enable);
 
     // copy acore_msg data to agc_msg
     let agc_msg = new Uint8Array(totalBytes);
@@ -592,7 +649,7 @@ function snifferEnable(port, obj, state) {
 
 function snifferActive(port, active) {
     let snifferState = 0;
-    // It only have one subblock in the audio core message
+    // It only has one subblock in the audio core message
     let numOfSub = 1;
 
     if (active.length === 0) {
@@ -675,7 +732,7 @@ function snifferActive(port, active) {
 function setSniffer(port, obj_str)
 {
     for (let i = 0; i < obj_str.length; i++) {
-        snifferEnable(port, obj_str[i].id, obj_str[i].checked)
+        snifferEnable(port, obj_str[i].id, obj_str[i].checked, obj_str[i].value)
     }
 }
 
