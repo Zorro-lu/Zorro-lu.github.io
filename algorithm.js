@@ -15,7 +15,8 @@ let OBJ =  {
     ACORE_DSP_NS: 13,
     ACORE_DSP: 14,
 };
-let DIRECTION =  {
+
+let DIRECTION = {
     IN:     0,
     OUT:    1,
 };
@@ -30,14 +31,16 @@ let SNIFFER_INDEX = {
 let SNIFFER_ENBALE_MASK     = 0xFE;
 let SNIFFER_DIRECTION_MASK  = 0xFD;
 
-// Big endian to little endian
 function UINT16_TO_BSTREAM(n, p) {
-
     p[0] = (n >> 8) & 0xFF;
     p[1] = n & 0xFF;
 }
 
-// Big endian to little endian
+function BSTREAM_TO_UINT16(p, n) {
+    n[0] = p[0] << 8;
+    n[0] = p[1] | n[0];
+}
+
 function UINT32_TO_BSTREAM(n, p) {
 
     p[0] = (n >> 24) & 0xFF;
@@ -52,11 +55,31 @@ let MSG_EP_AGENT = {
     PC: 0x03 << 2,
 };
 
+let FRAME_TYPE = {
+    INVALID:            0,
+    ACORE_MESSAGE:      1,
+    AUDIO_DATA:         2,
+}
+/**
+ * @brief Message IDs
+ */
 let HAL_Audio_HW_Control_Request        = 0x1B;
-let HAL_Audio_SB_Primary_Spkr_Settings  = 0x0002;
+let HAL_Audio_HW_Control_Response       = 0x1C;
+let HAL_Audio_Buffers_Request           = 0x30;
+let HAL_Audio_Buffers_Response          = 0x31;
+let HAL_Audio_Config_Request            = 0x32;
+let HAL_Audio_Config_Response           = 0x33;
+let HAL_Audio_Playback_Data_Request     = 0x34;
+let HAL_Audio_Playback_Data_Response    = 0x35;
+let HAL_Audio_Record_Data_Request       = 0x36;
+let HAL_Audio_Record_Data_Response      = 0x37;
+let HAL_Audio_Node_Data_Notify          = 0x38;
+let HAL_Audio_Tone_Generate_Request     = 0x00;
 
-let HAL_Audio_SB_Sniffer_Enable         = 0x0034;
-let HAL_Audio_SB_Sniffer_Activate       = 0x0035;
+/**
+ * Audio Sub-Block IDs
+ */
+let HAL_Audio_SB_Primary_Spkr_Settings  = 0x0002;
 let HAL_Audio_SB_UL_AGC_Flag            = 0x0009;
 let HAL_Audio_SB_UL_AGC_Attack_Time_ms  = 0x0010;
 let HAL_Audio_SB_UL_AGC_Decay_Time_ms   = 0x0011;
@@ -70,6 +93,18 @@ let HAL_Audio_SB_UL_DRC_Slope           = 0x0018;
 let HAL_Audio_SB_UL_PEQ_Center_Freq     = 0x0019;
 let HAL_Audio_SB_UL_PEQ_Qfactor         = 0x001a;
 let HAL_Audio_SB_UL_PEQ_Gain            = 0x001b;
+let HAL_Audio_SB_Sniffer_Enable         = 0x0034;
+let HAL_Audio_SB_Sniffer_Activate       = 0x0035;
+
+// Copy setting parameters to message
+function setMsg(sbMsg, settings) {
+    let offset = 0;
+    for (let prop in settings) {
+        let array = settings[prop];
+        sbMsg.set(array, offset);
+        offset += array.BYTES_PER_ELEMENT * array.length;
+    }
+}
 
 function setGain(string, port) {
     // console.log("sending to serial:" + string.length);
@@ -80,47 +115,44 @@ function setGain(string, port) {
     let temp  = parseInt(string, 10);
     let temp1 = Math.pow(10, temp * 0.05) * (1 << 7) + 0.5;
     let gain = Math.floor(temp1);
+    let frameTypeSize   = 1;
+    let numOfSubblocks  = 1;
+
+    let frameType = new Uint8Array(frameTypeSize);
 
     let acore_msg = {
-        pn_media: new Uint8Array([0]),
-        pn_rdev: new Uint8Array([0]),
-        pn_sdev: new Uint8Array([0]),
-        pn_res: new Uint8Array([0]),
-        pn_length: new Uint8Array([0, 0]),
-        pn_robj: new Uint8Array([0]),
-        pn_sobj: new Uint8Array([0]),
-
-        trans_id: new Uint8Array([0]),
-        msg_id: new Uint8Array([0]),
-
-        num_of_subblocks: new Uint8Array([0, 0]),
-
-        block_id: new Uint8Array([0, 0]),
-        block_len: new Uint8Array([0, 0]),
-        ep_mode: new Uint8Array([0]),
-        ep_id: new Uint8Array([0]),
-        logic_vol: new Uint8Array([0, 0]),
-        ctl_obj: new Uint8Array([0, 0]),
-        gain_left: new Uint8Array([0, 0]),
-        gain_right: new Uint8Array([0, 0]),
-        filter1: new Uint8Array([0, 0]),
-        sidetone: new Uint8Array([0, 0]),
-        filter2: new Uint8Array([0, 0]),
+        pn_media: new Uint8Array(1),
+        pn_rdev: new Uint8Array(1),
+        pn_sdev: new Uint8Array(1),
+        pn_res: new Uint8Array(1),
+        pn_length: new Uint8Array(2),
+        pn_robj: new Uint8Array(1),
+        pn_sobj: new Uint8Array(1),
+        trans_id: new Uint8Array(1),
+        msg_id: new Uint8Array(1),
+        num_of_subblocks: new Uint8Array(2),
     };
 
     let prim_spk_settings = {
-        block_id: new Uint8Array([0, 0]),
-        block_len: new Uint8Array([0, 0]),
-        ep_mode: new Uint8Array([0]),
-        ep_id: new Uint8Array([0]),
-        logic_vol: new Uint8Array([0, 0]),
-        ctl_obj: new Uint8Array([0, 0]),
-        gain_left: new Uint8Array([0, 0]),
-        gain_right: new Uint8Array([0, 0]),
-        filter1: new Uint8Array([0, 0]),
-        sidetone: new Uint8Array([0, 0]),
-        filter2: new Uint8Array([0, 0]),
+        block_id: new Uint8Array(2),
+        block_len: new Uint8Array(2),
+        ep_mode: new Uint8Array(1),
+        ep_id: new Uint8Array(1),
+        logic_vol: new Uint8Array(2),
+        ctl_obj: new Uint8Array(2),
+        gain_left: new Uint8Array(2),
+        gain_right: new Uint8Array(2),
+        filter1: new Uint8Array(2),
+        sidetone: new Uint8Array(2),
+        filter2: new Uint8Array(2),
     };
+
+    // count acore_msg size
+    let acore_msg_size = 0;
+    for (let prop in acore_msg) {
+        let array = acore_msg[prop];
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
+    }
 
     // count prim_spk_settings size
     let prim_spk_settings_size = 0;
@@ -129,37 +161,50 @@ function setGain(string, port) {
         prim_spk_settings_size += array.BYTES_PER_ELEMENT * array.length;
     }
 
+    let pnLength    = acore_msg_size + prim_spk_settings_size;
+    let totalBytes  = acore_msg_size + prim_spk_settings_size + frameTypeSize;
 
-    // count acore_msg size
-    let totalBytes = 0;
-    for (let prop in acore_msg) {
-        let array = acore_msg[prop];
-        totalBytes += array.BYTES_PER_ELEMENT * array.length;
-    }
+    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
 
     acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
     acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
-    UINT16_TO_BSTREAM(totalBytes, acore_msg.pn_length);
+    UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
     acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_GAIN;
     acore_msg.pn_sobj[0]  = OBJ.ACORE_TOOL;
     acore_msg.msg_id[0]   = HAL_Audio_HW_Control_Request;
-    UINT16_TO_BSTREAM(1, acore_msg.num_of_subblocks);
-    UINT16_TO_BSTREAM(HAL_Audio_SB_Primary_Spkr_Settings, acore_msg.block_id);
-    UINT16_TO_BSTREAM(prim_spk_settings_size, acore_msg.block_len);
-    UINT16_TO_BSTREAM(gain, acore_msg.gain_left);
-    UINT16_TO_BSTREAM(gain, acore_msg.gain_right);
+    UINT16_TO_BSTREAM(numOfSubblocks, acore_msg.num_of_subblocks);
 
-    // copy acore_msg data to vol
-    let vol = new Uint8Array(totalBytes);
+    UINT16_TO_BSTREAM(HAL_Audio_SB_Primary_Spkr_Settings, prim_spk_settings.block_id);
+    UINT16_TO_BSTREAM(prim_spk_settings_size, prim_spk_settings.block_len);
+    UINT16_TO_BSTREAM(gain, prim_spk_settings.gain_left);
+    UINT16_TO_BSTREAM(gain, prim_spk_settings.gain_right);
+
+    // copy acore_msg data to acoreMsg
+    let acoreMsg = new Uint8Array(acore_msg_size);
     let offset = 0;
     for (let prop in acore_msg) {
         let array = acore_msg[prop];
-        vol.set(array, offset);
+        acoreMsg.set(array, offset);
         offset += array.BYTES_PER_ELEMENT * array.length;
     }
 
+    // copy prim_spk_settings data to primSpkSettingsMsg
+    let primSpkSettingsMsg = new Uint8Array(prim_spk_settings_size);
+    offset = 0;
+    for (let prop in prim_spk_settings) {
+        let array = prim_spk_settings[prop];
+        primSpkSettingsMsg.set(array, offset);
+        offset += array.BYTES_PER_ELEMENT * array.length;
+    }
+
+    let gainMsg = new Uint8Array(totalBytes);
+    gainMsg.set(frameType, 0);
+    gainMsg.set(acoreMsg, frameType.length);
+    gainMsg.set(primSpkSettingsMsg, frameType.length + acoreMsg.length);
+
+    console.log(gainMsg);
     if (port) {
-        port.send(vol);
+        port.send(gainMsg);
     }
 };
 
@@ -174,6 +219,7 @@ function setDrc(port, attack_time_str, decay_time_str,
     console.log("set Drc Noise Gate: [" + noise_gate_str +"]\n");
     console.log("set Drc Slope: [" + slope_str +"]\n");
 
+    // Coverts the string to a decimal int
     let attack_time     = parseInt(attack_time_str, 10);
     let decay_time      = parseInt(decay_time_str, 10);
     let knee_threshold  = parseInt(knee_threshold_str, 10);
@@ -183,210 +229,9 @@ function setDrc(port, attack_time_str, decay_time_str,
     slope_temp = slope_temp * (1 << 10);
     let slope  = Math.floor(slope_temp);
 
-    let acore_msg = {
-        pn_media: new Uint8Array([0]),
-        pn_rdev: new Uint8Array([0]),
-        pn_sdev: new Uint8Array([0]),
-        pn_res: new Uint8Array([0]),
-        pn_length: new Uint8Array([0, 0]),
-        pn_robj: new Uint8Array([0]),
-        pn_sobj: new Uint8Array([0]),
-
-        trans_id: new Uint8Array([0]),
-        msg_id: new Uint8Array([0]),
-
-        num_of_subblocks: new Uint8Array([0, 0]),
-
-        attack_time_block_id: new Uint8Array([0, 0]),
-        attack_time_block_len: new Uint8Array([0, 0]),
-        attack_time: new Int8Array([0, 0]),
-
-        decay_time_block_id: new Uint8Array([0, 0]),
-        decay_time_block_len: new Uint8Array([0, 0]),
-        decay_time: new Int8Array([0, 0]),
-
-        knee_threshold_block_id: new Uint8Array([0, 0]),
-        knee_threshold_block_len: new Uint8Array([0, 0]),
-        knee_threshold: new Int8Array([0, 0]),
-
-        noise_gate_block_id: new Uint8Array([0, 0]),
-        noise_gate_block_len: new Uint8Array([0, 0]),
-        noise_gate: new Int8Array([0, 0]),
-
-        slope_block_id: new Uint8Array([0, 0]),
-        slope_block_len: new Uint8Array([0, 0]),
-        slope: new Int8Array([0, 0]),
-    };
-
-    let sb_drc_attack_time = {
-        block_id: new Uint8Array([0, 0]),
-        block_len: new Uint8Array([0, 0]),
-        attack_time: new Uint8Array([0, 0]),
-    };
-
-    // count sb_drc_attack_time size
-    let sb_drc_attack_time_size = 0;
-    for (let prop in sb_drc_attack_time) {
-        let array = sb_drc_attack_time[prop];
-        sb_drc_attack_time_size += array.BYTES_PER_ELEMENT * array.length;
-    }
-    let sb_drc_decay_time_size      = sb_drc_attack_time_size;
-    let sb_drc_knee_threshold_size  = sb_drc_attack_time_size;
-    let sb_drc_noise_gate_size      = sb_drc_attack_time_size;
-    let sb_drc_slope_size           = sb_drc_attack_time_size;
-
-    // count acore_msg size
-    let totalBytes = 0;
-    for (let prop in acore_msg) {
-        let array = acore_msg[prop];
-        totalBytes += array.BYTES_PER_ELEMENT * array.length;
-    }
-
-    acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
-    acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
-    UINT16_TO_BSTREAM(totalBytes, acore_msg.pn_length);
-    acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_DRC;
-    acore_msg.pn_sobj[0]  = OBJ.ACORE_TOOL;
-    acore_msg.msg_id[0]   = HAL_Audio_HW_Control_Request;
-    UINT16_TO_BSTREAM(5, acore_msg.num_of_subblocks);
-
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Attack_Time_ms, acore_msg.attack_time_block_id);
-    UINT16_TO_BSTREAM(sb_drc_attack_time_size, acore_msg.attack_time_block_len);
-    UINT16_TO_BSTREAM(attack_time, acore_msg.attack_time);
-
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Decay_Time_ms, acore_msg.decay_time_block_id);
-    UINT16_TO_BSTREAM(sb_drc_decay_time_size, acore_msg.decay_time_block_len);
-    UINT16_TO_BSTREAM(decay_time, acore_msg.decay_time);
-
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Knee_Threshold, acore_msg.knee_threshold_block_id);
-    UINT16_TO_BSTREAM(sb_drc_knee_threshold_size, acore_msg.knee_threshold_block_len);
-    UINT16_TO_BSTREAM(knee_threshold, acore_msg.knee_threshold);
-
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Noise_Gate, acore_msg.noise_gate_block_id);
-    UINT16_TO_BSTREAM(sb_drc_noise_gate_size, acore_msg.noise_gate_block_len);
-    UINT16_TO_BSTREAM(noise_gate, acore_msg.noise_gate);
-
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Slope, acore_msg.slope_block_id);
-    UINT16_TO_BSTREAM(sb_drc_slope_size, acore_msg.slope_block_len);
-    UINT16_TO_BSTREAM(slope, acore_msg.slope);
-
-    // copy acore_msg data to drc_msg
-    let drc_msg = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (let prop in acore_msg) {
-        let array = acore_msg[prop];
-        drc_msg.set(array, offset);
-        offset += array.BYTES_PER_ELEMENT * array.length;
-    }
-
-    console.log(drc_msg);
-    if (port) {
-        port.send(drc_msg);
-    }
-}
-
-    // The DRC parameters are written to message and sent via the port
-function setAgc(port, attack_time_str, decay_time_str, target_str) {
-    if (attack_time_str.length === 0)
-        return;
-    console.log("set Agc Attack Time: [" + attack_time_str +"]\n");
-    console.log("set Agc Decay Time: [" + decay_time_str +"]\n");
-    console.log("set Agc Target: [" + target_str +"]\n");
-
-    let attack_time = parseInt(attack_time_str, 10);
-    let decay_time  = parseInt(decay_time_str, 10);
-    let target      = parseInt(target_str, 10);
-
-    let acore_msg = {
-        pn_media: new Uint8Array([0]),
-        pn_rdev: new Uint8Array([0]),
-        pn_sdev: new Uint8Array([0]),
-        pn_res: new Uint8Array([0]),
-        pn_length: new Uint8Array([0, 0]),
-        pn_robj: new Uint8Array([0]),
-        pn_sobj: new Uint8Array([0]),
-
-        trans_id: new Uint8Array([0]),
-        msg_id: new Uint8Array([0]),
-
-        num_of_subblocks: new Uint8Array([0, 0]),
-
-        attack_time_block_id: new Uint8Array([0, 0]),
-        attack_time_block_len: new Uint8Array([0, 0]),
-        attack_time: new Int8Array([0, 0]),
-
-        decay_time_block_id: new Uint8Array([0, 0]),
-        decay_time_block_len: new Uint8Array([0, 0]),
-        decay_time: new Int8Array([0, 0]),
-
-        target_block_id: new Uint8Array([0, 0]),
-        target_block_len: new Uint8Array([0, 0]),
-        target: new Int8Array([0, 0]),
-    };
-
-    let sb_agc_attack_time = {
-        block_id: new Uint8Array([0, 0]),
-        block_len: new Uint8Array([0, 0]),
-        attack_time: new Uint8Array([0, 0]),
-    };
-
-    // count sb_agc_attack_time size
-    let sb_agc_attack_time_size = 0;
-    for (let prop in sb_agc_attack_time) {
-        let array = sb_agc_attack_time[prop];
-        sb_agc_attack_time_size += array.BYTES_PER_ELEMENT * array.length;
-    }
-    let sb_agc_decay_time_size = sb_agc_attack_time_size;
-    let sb_agc_target_size = sb_agc_attack_time_size;
-
-    // count acore_msg size
-    let totalBytes = 0;
-    for (let prop in acore_msg) {
-        let array = acore_msg[prop];
-        totalBytes += array.BYTES_PER_ELEMENT * array.length;
-    }
-
-    acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
-    acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
-    UINT16_TO_BSTREAM(totalBytes, acore_msg.pn_length);
-    acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_AGC;
-    acore_msg.pn_sobj[0]  = OBJ.ACORE_TOOL;
-    acore_msg.msg_id[0]   = HAL_Audio_HW_Control_Request;
-    UINT16_TO_BSTREAM(3, acore_msg.num_of_subblocks);
-
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_AGC_Attack_Time_ms, acore_msg.attack_time_block_id);
-    UINT16_TO_BSTREAM(sb_agc_attack_time_size, acore_msg.attack_time_block_len);
-    UINT16_TO_BSTREAM(attack_time, acore_msg.attack_time);
-
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_AGC_Decay_Time_ms, acore_msg.decay_time_block_id);
-    UINT16_TO_BSTREAM(sb_agc_decay_time_size, acore_msg.decay_time_block_len);
-    UINT16_TO_BSTREAM(decay_time, acore_msg.decay_time);
-
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_AGC_Target, acore_msg.target_block_id);
-    UINT16_TO_BSTREAM(sb_agc_target_size, acore_msg.target_block_len);
-    UINT16_TO_BSTREAM(target, acore_msg.target);
-
-    // copy acore_msg data to agc_msg
-    let agc_msg = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (let prop in acore_msg) {
-        let array = acore_msg[prop];
-        agc_msg.set(array, offset);
-        offset += array.BYTES_PER_ELEMENT * array.length;
-    }
-
-    console.log(agc_msg);
-    if (port) {
-        port.send(agc_msg);
-    }
-}
-
-// The PEQ parameters are written to message and sent via the port
-function setPeq(port, dir, band_num_str, band_center_freq_str, band_qfactor_str, band_gain_str) {
-    if (band_num_str.length === 0)
-        return;
-
-    let band_num    = parseInt(band_num_str, 10);
+    let frameTypeSize   = 1;
+    let numOfSubblocks  = 5;
+    let frameType = new Uint8Array(frameTypeSize);
 
     let acore_msg = {
         pn_media: new Uint8Array(1),
@@ -396,57 +241,333 @@ function setPeq(port, dir, band_num_str, band_center_freq_str, band_qfactor_str,
         pn_length: new Uint8Array(2),
         pn_robj: new Uint8Array(1),
         pn_sobj: new Uint8Array(1),
-
         trans_id: new Uint8Array(1),
         msg_id: new Uint8Array(1),
-
         num_of_subblocks: new Uint8Array(2),
+    };
 
-        band_center_freq_id: new Uint8Array(2),
-        band_center_freq_len: new Uint8Array(2),
-        band_center_freq_num: new Uint8Array(2),
+    let drc_attack_time = {
+        attack_time_block_id: new Uint8Array(2),
+        attack_time_block_len: new Uint8Array(2),
+        attack_time: new Int8Array(2),
+    };
+
+    let drc_decay_time = {
+        decay_time_block_id: new Uint8Array(2),
+        decay_time_block_len: new Uint8Array(2),
+        decay_time: new Int8Array(2),
+    };
+
+    let drc_knee_threshold = {
+        knee_threshold_block_id: new Uint8Array(2),
+        knee_threshold_block_len: new Uint8Array(2),
+        knee_threshold: new Int8Array(2),
+    };
+
+    let drc_noise_gate = {
+        noise_gate_block_id: new Uint8Array(2),
+        noise_gate_block_len: new Uint8Array(2),
+        noise_gate: new Int8Array(2),
+    };
+
+    let drc_slope = {
+        slope_block_id: new Uint8Array(2),
+        slope_block_len: new Uint8Array(2),
+        slope: new Int8Array(2),
+    };
+
+    // count drc_attack_time size
+    let drc_attack_time_size = 0;
+    for (let prop in drc_attack_time) {
+        let array = drc_attack_time[prop];
+        drc_attack_time_size += array.BYTES_PER_ELEMENT * array.length;
+    }
+    let drc_decay_time_size      = drc_attack_time_size;
+    let drc_knee_threshold_size  = drc_attack_time_size;
+    let drc_noise_gate_size      = drc_attack_time_size;
+    let drc_slope_size           = drc_attack_time_size;
+
+    // count acore_msg size
+    let acore_msg_size = 0;
+    for (let prop in acore_msg) {
+        let array = acore_msg[prop];
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
+    }
+
+    let pnLength = acore_msg_size + drc_attack_time_size + drc_decay_time_size
+            + drc_knee_threshold_size + drc_noise_gate_size + drc_slope_size;
+
+    let totalBytes = acore_msg_size + drc_attack_time_size + drc_decay_time_size
+                + drc_knee_threshold_size + drc_noise_gate_size + drc_slope_size + frameTypeSize;
+
+    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
+
+    acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
+    acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
+    UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
+    acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_DRC;
+    acore_msg.pn_sobj[0]  = OBJ.ACORE_TOOL;
+    acore_msg.msg_id[0]   = HAL_Audio_HW_Control_Request;
+    UINT16_TO_BSTREAM(numOfSubblocks, acore_msg.num_of_subblocks);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Attack_Time_ms, drc_attack_time.attack_time_block_id);
+    UINT16_TO_BSTREAM(drc_attack_time_size, drc_attack_time.attack_time_block_len);
+    UINT16_TO_BSTREAM(attack_time, drc_attack_time.attack_time);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Decay_Time_ms, drc_decay_time.decay_time_block_id);
+    UINT16_TO_BSTREAM(drc_decay_time_size, drc_decay_time.decay_time_block_len);
+    UINT16_TO_BSTREAM(decay_time, drc_decay_time.decay_time);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Knee_Threshold, drc_knee_threshold.knee_threshold_block_id);
+    UINT16_TO_BSTREAM(drc_knee_threshold_size, drc_knee_threshold.knee_threshold_block_len);
+    UINT16_TO_BSTREAM(knee_threshold, drc_knee_threshold.knee_threshold);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Noise_Gate, drc_noise_gate.noise_gate_block_id);
+    UINT16_TO_BSTREAM(drc_noise_gate_size, drc_noise_gate.noise_gate_block_len);
+    UINT16_TO_BSTREAM(noise_gate, drc_noise_gate.noise_gate);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_DRC_Slope, drc_slope.slope_block_id);
+    UINT16_TO_BSTREAM(drc_slope_size, drc_slope.slope_block_len);
+    UINT16_TO_BSTREAM(slope, drc_slope.slope);
+
+    // copy acore_msg data to acoreMsg
+    let acoreMsg = new Uint8Array(acore_msg_size);
+    setMsg(acoreMsg, acore_msg);
+
+    // copy drc_attack_time data to drcAttackTimeMsg
+    let drcAttackTimeMsg = new Uint8Array(drc_attack_time_size);
+    setMsg(drcAttackTimeMsg, drc_attack_time);
+
+    // copy drc_decay_time data to drcDecayTimeMsg
+    let drcDecayTimeMsg = new Uint8Array(drc_decay_time_size);
+    setMsg(drcDecayTimeMsg, drc_decay_time);
+
+    // copy drc_knee_threshold data to drcKneeThresholdMsg
+    let drcKneeThresholdMsg = new Uint8Array(drc_knee_threshold_size);
+    setMsg(drcKneeThresholdMsg, drc_knee_threshold);
+
+    // copy drc_noise_gate data to drcNoiseGateMsg
+    let drcNoiseGateMsg = new Uint8Array(drc_noise_gate_size);
+    setMsg(drcNoiseGateMsg, drc_noise_gate);
+
+    // copy drc_slope data to drcSlopeMsg
+    let drcSlopeMsg = new Uint8Array(drc_slope_size);
+    setMsg(drcSlopeMsg, drc_slope);
+
+    // Combine several message into one message
+    let drcMsg = new Uint8Array(totalBytes);
+    drcMsg.set(frameType, 0);
+    drcMsg.set(acoreMsg, frameType.length);
+    drcMsg.set(drcAttackTimeMsg, frameType.length + acoreMsg.length);
+    drcMsg.set(drcDecayTimeMsg, frameType.length + acoreMsg.length + drcAttackTimeMsg.length);
+    drcMsg.set(drcKneeThresholdMsg, frameType.length + acoreMsg.length + drcAttackTimeMsg.length + drcDecayTimeMsg.length);
+    drcMsg.set(drcNoiseGateMsg, frameType.length + acoreMsg.length + drcAttackTimeMsg.length + drcDecayTimeMsg.length + drcKneeThresholdMsg.length);
+    drcMsg.set(drcSlopeMsg, frameType.length + acoreMsg.length + drcAttackTimeMsg.length + drcDecayTimeMsg.length + drcKneeThresholdMsg.length + drcNoiseGateMsg.length);
+
+    console.log(drcMsg);
+    if (port) {
+        port.send(drcMsg);
+    }
+}
+
+// The AGC parameters are written to message and sent via the port
+function setAgc(port, attack_time_str, decay_time_str, target_str) {
+    if (attack_time_str.length === 0)
+        return;
+    console.log("set Agc Attack Time: [" + attack_time_str +"]\n");
+    console.log("set Agc Decay Time: [" + decay_time_str +"]\n");
+    console.log("set Agc Target: [" + target_str +"]\n");
+
+    // Coverts the string to a decimal int
+    let attack_time = parseInt(attack_time_str, 10);
+    let decay_time  = parseInt(decay_time_str, 10);
+    let target      = parseInt(target_str, 10);
+
+    let frameTypeSize   = 1;
+    let numOfSubblocks  = 3;
+    let frameType = new Uint8Array(frameTypeSize);
+
+    let acore_msg = {
+        pn_media: new Uint8Array([0]),
+        pn_rdev: new Uint8Array([0]),
+        pn_sdev: new Uint8Array([0]),
+        pn_res: new Uint8Array([0]),
+        pn_length: new Uint8Array(2),
+        pn_robj: new Uint8Array([0]),
+        pn_sobj: new Uint8Array([0]),
+        trans_id: new Uint8Array([0]),
+        msg_id: new Uint8Array([0]),
+        num_of_subblocks: new Uint8Array(2),
+    };
+
+    let agc_attack_time = {
+        block_id: new Uint8Array(2),
+        block_len: new Uint8Array(2),
+        attack_time: new Uint8Array(2),
+    };
+
+    let agc_decay_time = {
+        block_id: new Uint8Array(2),
+        block_len: new Uint8Array(2),
+        decay_time: new Int8Array(2),
+    };
+
+    let agc_target = {
+        block_id: new Uint8Array(2),
+        block_len: new Uint8Array(2),
+        target: new Int8Array(2),
+    };
+
+    // count agc_attack_time size
+    let agc_attack_time_size = 0;
+    for (let prop in agc_attack_time) {
+        let array = agc_attack_time[prop];
+        agc_attack_time_size += array.BYTES_PER_ELEMENT * array.length;
+    }
+    let agc_decay_time_size = agc_attack_time_size;
+    let agc_target_size     = agc_attack_time_size;
+
+    // count acore_msg size
+    let acore_msg_size = 0;
+    for (let prop in acore_msg) {
+        let array = acore_msg[prop];
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
+    }
+
+    let pnLength = acore_msg_size + agc_attack_time_size + agc_decay_time_size
+            + agc_target_size;
+
+    let totalBytes = acore_msg_size + agc_attack_time_size + agc_decay_time_size
+            + agc_target_size + frameTypeSize;
+
+    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
+
+    acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
+    acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
+    UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
+    acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_AGC;
+    acore_msg.pn_sobj[0]  = OBJ.ACORE_TOOL;
+    acore_msg.msg_id[0]   = HAL_Audio_HW_Control_Request;
+    UINT16_TO_BSTREAM(numOfSubblocks, acore_msg.num_of_subblocks);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_AGC_Attack_Time_ms, agc_attack_time.block_id);
+    UINT16_TO_BSTREAM(agc_attack_time_size, agc_attack_time.block_len);
+    UINT16_TO_BSTREAM(attack_time, agc_attack_time.attack_time);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_AGC_Decay_Time_ms, agc_decay_time.block_id);
+    UINT16_TO_BSTREAM(agc_decay_time_size, agc_decay_time.block_len);
+    UINT16_TO_BSTREAM(decay_time, agc_decay_time.decay_time);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_AGC_Target, agc_target.block_id);
+    UINT16_TO_BSTREAM(agc_target_size, agc_target.block_len);
+    UINT16_TO_BSTREAM(target, agc_target.target);
+
+    // copy acore_msg data to acoreMsg
+    let acoreMsg = new Uint8Array(acore_msg_size);
+    setMsg(acoreMsg, acore_msg);
+
+    // copy agc_attack_time data to agcAttackTimeMsg
+    let agcAttackTimeMsg = new Uint8Array(agc_attack_time_size);
+    setMsg(agcAttackTimeMsg, agc_attack_time);
+
+    // copy agc_decay_time data to agcDecayTimeMsg
+    let agcDecayTimeMsg = new Uint8Array(agc_decay_time_size);
+    setMsg(agcDecayTimeMsg, agc_decay_time);
+
+    // copy agc_decay_time data to agcDecayTimeMsg
+    let agcTargetMsg = new Uint8Array(agc_target_size);
+    setMsg(agcTargetMsg, agc_target);
+
+    // Combine several message into one message
+    let agcMsg = new Uint8Array(totalBytes);
+    agcMsg.set(frameType, 0);
+    agcMsg.set(acoreMsg, frameType.length);
+    agcMsg.set(agcAttackTimeMsg, frameType.length + acoreMsg.length);
+    agcMsg.set(agcDecayTimeMsg, frameType.length + acoreMsg.length + agcAttackTimeMsg.length);
+    agcMsg.set(agcTargetMsg, frameType.length + acoreMsg.length + agcAttackTimeMsg.length + agcDecayTimeMsg.length);
+
+    console.log(agcMsg);
+    if (port) {
+        port.send(agcMsg);
+    }
+}
+
+// The PEQ parameters are written to message and sent via the port
+function setPeq(port, dir, band_num_str, band_center_freq_str, band_qfactor_str, band_gain_str) {
+    if (band_num_str.length === 0)
+        return;
+
+    // Coverts the string to a decimal int
+    let band_num    = parseInt(band_num_str, 10);
+
+    let frameTypeSize   = 1;
+    let numOfSubblocks  = 3;
+    let frameType = new Uint8Array(frameTypeSize);
+
+    let acore_msg = {
+        pn_media: new Uint8Array(1),
+        pn_rdev: new Uint8Array(1),
+        pn_sdev: new Uint8Array(1),
+        pn_res: new Uint8Array(1),
+        pn_length: new Uint8Array(2),
+        pn_robj: new Uint8Array(1),
+        pn_sobj: new Uint8Array(1),
+        trans_id: new Uint8Array(1),
+        msg_id: new Uint8Array(1),
+        num_of_subblocks: new Uint8Array(2),
+    };
+
+    let peq_band_center_freq = {
+        block_id: new Uint8Array(2),
+        block_len: new Uint8Array(2),
+        number: new Uint8Array(2),
         // band_num * sizeof(float)
         band_center_freq: new Int8Array(36),
+    };
 
-        band_qfactor_id: new Uint8Array(2),
-        band_qfactor_len: new Uint8Array(2),
-        band_qfactor_num: new Uint8Array(2),
+    let peq_band_qfactor = {
+        block_id: new Uint8Array(2),
+        block_len: new Uint8Array(2),
+        number: new Uint8Array(2),
         // band_num * sizeof(float)
         band_qfactor: new Int8Array(36),
+    };
 
-        band_gain_id: new Uint8Array(2),
-        band_gain_len: new Uint8Array(2),
-        band_gain_num: new Uint8Array(2),
+    let peq_band_gain = {
+        block_id: new Uint8Array(2),
+        block_len: new Uint8Array(2),
+        number: new Uint8Array(2),
         // band_num * sizeof(float)
         band_gain: new Int8Array(36),
     };
 
-    let sb_band_center_freq = {
-        block_id: new Uint8Array(2),
-        block_len: new Uint8Array(2),
-        block_num: new Uint8Array(2),
-        band_center_freq: new Uint8Array(36),
-    };
-
-    // count sb_band_center_freq size
-    let sb_band_center_freq_size = 0;
-    for (let prop in sb_band_center_freq) {
-        let array = sb_band_center_freq[prop];
-        sb_band_center_freq_size += array.BYTES_PER_ELEMENT * array.length;
+    // count band_center_freq size
+    let peq_band_center_freq_size = 0;
+    for (let prop in peq_band_center_freq) {
+        let array = peq_band_center_freq[prop];
+        peq_band_center_freq_size += array.BYTES_PER_ELEMENT * array.length;
     }
-    let sb_band_qfactor_size = sb_band_center_freq_size;
-    let sb_band_gain_size = sb_band_center_freq_size;
+    let peq_band_qfactor_size = peq_band_center_freq_size;
+    let peq_band_gain_size = peq_band_center_freq_size;
 
     // count acore_msg size
-    let totalBytes = 0;
+    let acore_msg_size = 0;
     for (let prop in acore_msg) {
         let array = acore_msg[prop];
-        totalBytes += array.BYTES_PER_ELEMENT * array.length;
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
     }
+
+    let pnLength = acore_msg_size + peq_band_center_freq_size + peq_band_qfactor_size
+            + peq_band_gain_size;
+
+    let totalBytes = acore_msg_size + peq_band_center_freq_size + peq_band_qfactor_size
+            + peq_band_gain_size + frameTypeSize;
+
+    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
 
     acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
     acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
-    UINT16_TO_BSTREAM(totalBytes, acore_msg.pn_length);
+    UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
 
     if (dir === "in") {
         acore_msg.pn_robj[0]  = OBJ.ACORE_DSP_PEQ_UL;
@@ -456,61 +577,77 @@ function setPeq(port, dir, band_num_str, band_center_freq_str, band_qfactor_str,
 
     acore_msg.pn_sobj[0]  = OBJ.ACORE_TOOL;
     acore_msg.msg_id[0]   = HAL_Audio_HW_Control_Request;
-    UINT16_TO_BSTREAM(3, acore_msg.num_of_subblocks);
+    UINT16_TO_BSTREAM(numOfSubblocks, acore_msg.num_of_subblocks);
 
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_PEQ_Center_Freq, acore_msg.band_center_freq_id);
-    UINT16_TO_BSTREAM(sb_band_center_freq_size, acore_msg.band_center_freq_len);
-    UINT16_TO_BSTREAM(band_num, acore_msg.band_center_freq_num);
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_PEQ_Center_Freq, peq_band_center_freq.block_id);
+    UINT16_TO_BSTREAM(peq_band_center_freq_size, peq_band_center_freq.block_len);
+    UINT16_TO_BSTREAM(band_num, peq_band_center_freq.number);
     for (let i = 0; i < band_center_freq_str.length; i++) {
         console.log(band_center_freq_str[i].value);
         let band_center_freq  = parseInt(band_center_freq_str[i].value, 10);
         // 4 = sizeof(int)
         let temp_buf = new Int8Array(4);
         UINT32_TO_BSTREAM(band_center_freq, temp_buf);
-        acore_msg.band_center_freq.set(temp_buf, i * temp_buf.length);
+        peq_band_center_freq.band_center_freq.set(temp_buf, i * temp_buf.length);
     }
 
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_PEQ_Qfactor, acore_msg.band_qfactor_id);
-    UINT16_TO_BSTREAM(sb_band_qfactor_size, acore_msg.band_qfactor_len);
-    UINT16_TO_BSTREAM(band_num, acore_msg.band_qfactor_num);
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_PEQ_Qfactor, peq_band_qfactor.block_id);
+    UINT16_TO_BSTREAM(peq_band_qfactor_size, peq_band_qfactor.block_len);
+    UINT16_TO_BSTREAM(band_num, peq_band_qfactor.number);
     for (let i = 0; i < band_qfactor_str.length; i++) {
         let band_qfactor  = parseFloat(band_qfactor_str[i].value);
         let band_qfactor_buf = Float32Array.from([band_qfactor]).buffer;
         let temp_buf = new Int8Array(band_qfactor_buf);
-        acore_msg.band_qfactor.set(temp_buf, i * temp_buf.length);
+        peq_band_qfactor.band_qfactor.set(temp_buf, i * temp_buf.length);
     }
 
-    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_PEQ_Gain, acore_msg.band_gain_id);
-    UINT16_TO_BSTREAM(sb_band_gain_size, acore_msg.band_gain_len);
-    UINT16_TO_BSTREAM(band_num, acore_msg.band_gain_num);
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_PEQ_Gain, peq_band_gain.block_id);
+    UINT16_TO_BSTREAM(peq_band_gain_size, peq_band_gain.block_len);
+    UINT16_TO_BSTREAM(band_num, peq_band_gain.number);
     for (let i = 0; i < band_gain_str.length; i++) {
         console.log(band_gain_str[i].value);
         let band_gain  = parseInt(band_gain_str[i].value, 10);
         // 4 = sizeof(int)
         let temp_buf = new Int8Array(4);
         UINT32_TO_BSTREAM(band_gain, temp_buf);
-        acore_msg.band_gain.set(temp_buf, i * temp_buf.length);
+        peq_band_gain.band_gain.set(temp_buf, i * temp_buf.length);
     }
 
-    // copy acore_msg data to agc_msg
-    let agc_msg = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (let prop in acore_msg) {
-        let array = acore_msg[prop];
-        agc_msg.set(array, offset);
-        offset += array.BYTES_PER_ELEMENT * array.length;
-    }
+    // copy acore_msg data to acoreMsg
+    let acoreMsg = new Uint8Array(acore_msg_size);
+    setMsg(acoreMsg, acore_msg);
 
-    console.log(agc_msg);
+    // copy peq_band_center_freq data to peqBandCenterFreqMsg
+    let peqBandCenterFreqMsg = new Uint8Array(peq_band_center_freq_size);
+    setMsg(peqBandCenterFreqMsg, peq_band_center_freq);
+
+    // copy peq_band_qfactor data to peqBandQfactorMsg
+    let peqBandQfactorMsg = new Uint8Array(peq_band_qfactor_size);
+    setMsg(peqBandQfactorMsg, peq_band_qfactor);
+
+    // copy peq_band_gain data to peqBandGainMsg
+    let peqBandGainMsg = new Uint8Array(peq_band_gain_size);
+    setMsg(peqBandGainMsg, peq_band_gain);
+
+    // Combine several message into one message
+    let peqMsg = new Uint8Array(totalBytes);
+    peqMsg.set(frameType, 0);
+    peqMsg.set(acoreMsg, frameType.length);
+    peqMsg.set(peqBandCenterFreqMsg, frameType.length + acoreMsg.length);
+    peqMsg.set(peqBandQfactorMsg, frameType.length + acoreMsg.length + peqBandCenterFreqMsg.length);
+    peqMsg.set(peqBandGainMsg, frameType.length + acoreMsg.length + peqBandCenterFreqMsg.length + peqBandQfactorMsg.length);
+    console.log(peqMsg);
+
     if (port) {
-        port.send(agc_msg);
+        port.send(peqMsg);
     }
 }
 
 function snifferEnable(port, obj, enable, value) {
     // It only has one subblock in the audio core message
     let numOfSub         = 1;
-
+    let frameTypeSize   = 1;
+    let frameType = new Uint8Array(frameTypeSize);
     if (obj.length === 0) {
         return;
     }
@@ -523,16 +660,9 @@ function snifferEnable(port, obj, enable, value) {
         pn_length: new Uint8Array(2),
         pn_robj: new Uint8Array(1),
         pn_sobj: new Uint8Array(1),
-
         trans_id: new Uint8Array(1),
         msg_id: new Uint8Array(1),
-
         num_of_subblocks: new Uint8Array(2),
-
-        block_id: new Uint8Array(2),
-        block_len: new Uint8Array(2),
-        state: new Uint8Array(1),
-        index: new Uint8Array(1),
     };
 
     let sniffer_enable = {
@@ -542,7 +672,7 @@ function snifferEnable(port, obj, enable, value) {
         index: new Uint8Array(1),
     };
 
-    // count prim_spk_settings size
+    // count sniffer_enable size
     let sniffer_enable_size = 0;
     for (let prop in sniffer_enable) {
         let array = sniffer_enable[prop];
@@ -550,10 +680,10 @@ function snifferEnable(port, obj, enable, value) {
     }
 
     // count acore_msg size
-    let totalBytes = 0;
+    let acore_msg_size = 0;
     for (let prop in acore_msg) {
         let array = acore_msg[prop];
-        totalBytes += array.BYTES_PER_ELEMENT * array.length;
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
     }
 
     switch (obj) {
@@ -588,7 +718,7 @@ function snifferEnable(port, obj, enable, value) {
 
         case "ACORE_DSP_AEC_REF_IN":
             acore_msg.pn_robj[0]    = OBJ.ACORE_DSP_AEC;
-            acore_msg.index[0]      = SNIFFER_INDEX.PAD_1;
+            sniffer_enable.index[0] = SNIFFER_INDEX.PAD_1;
             break;
 
         case "ACORE_DSP_AEC_OUT":
@@ -611,44 +741,57 @@ function snifferEnable(port, obj, enable, value) {
     //     uint8_t  reserved  : 6; /**< Reserved */
     // }
     if (enable === true) {
-        acore_msg.state[0] = (acore_msg.state[0] & SNIFFER_ENBALE_MASK) | true;
+        sniffer_enable.state[0] = (sniffer_enable.state[0] & SNIFFER_ENBALE_MASK) | true;
     }
     else if (enable === false) {
-        acore_msg.state[0] = (acore_msg.state[0] & SNIFFER_ENBALE_MASK) | false;
+        sniffer_enable.state[0] = (sniffer_enable.state[0] & SNIFFER_ENBALE_MASK) | false;
     }
 
     if (value === "in") {
-        acore_msg.state[0] = (acore_msg.state[0] & SNIFFER_DIRECTION_MASK) | (DIRECTION.IN << 1);
+        sniffer_enable.state[0] = (sniffer_enable.state[0] & SNIFFER_DIRECTION_MASK) | (DIRECTION.IN << 1);
     } else if (value === "out") {
-        acore_msg.state[0] = (acore_msg.state[0] & SNIFFER_DIRECTION_MASK) | (DIRECTION.OUT << 1);
+        sniffer_enable.state[0] = (sniffer_enable.state[0] & SNIFFER_DIRECTION_MASK) | (DIRECTION.OUT << 1);
     }
+
+    let pnLength = acore_msg_size + sniffer_enable_size;
+    let totalBytes = acore_msg_size + sniffer_enable_size + frameTypeSize;
+
+    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
 
     acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
     acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
-    UINT16_TO_BSTREAM(totalBytes, acore_msg.pn_length);
+    UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
     acore_msg.pn_sobj[0]  = OBJ.ACORE_TOOL;
     acore_msg.msg_id[0]   = HAL_Audio_HW_Control_Request;
     UINT16_TO_BSTREAM(numOfSub, acore_msg.num_of_subblocks);
-    UINT16_TO_BSTREAM(HAL_Audio_SB_Sniffer_Enable, acore_msg.block_id);
-    UINT16_TO_BSTREAM(sniffer_enable_size, acore_msg.block_len);
 
-    // copy acore_msg data to agc_msg
-    let agc_msg = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (let prop in acore_msg) {
-        let array = acore_msg[prop];
-        agc_msg.set(array, offset);
-        offset += array.BYTES_PER_ELEMENT * array.length;
-    }
+    UINT16_TO_BSTREAM(HAL_Audio_SB_Sniffer_Enable, sniffer_enable.block_id);
+    UINT16_TO_BSTREAM(sniffer_enable_size, sniffer_enable.block_len);
 
-    console.log(agc_msg);
+    // copy acore_msg data to acoreMsg
+    let acoreMsg = new Uint8Array(acore_msg_size);
+    setMsg(acoreMsg, acore_msg);
+
+    // copy sniffer_enable data to snifferEnableMsg
+    let snifferEnableMsg = new Uint8Array(sniffer_enable_size);
+    setMsg(snifferEnableMsg, sniffer_enable);
+
+    // Combine several message into one message
+    let snifferMsg = new Uint8Array(totalBytes);
+    snifferMsg.set(frameType, 0);
+    snifferMsg.set(acoreMsg, frameType.length);
+    snifferMsg.set(snifferEnableMsg, frameType.length + acoreMsg.length);
+
+    console.log(snifferMsg);
     if (port) {
-        port.send(agc_msg);
+        port.send(snifferMsg);
     }
 };
 
 function snifferActive(port, active) {
     let snifferState = 0;
+    let frameTypeSize   = 1;
+    let frameType = new Uint8Array(frameTypeSize);
     // It only has one subblock in the audio core message
     let numOfSub = 1;
 
@@ -671,15 +814,9 @@ function snifferActive(port, active) {
         pn_length: new Uint8Array(2),
         pn_robj: new Uint8Array(1),
         pn_sobj: new Uint8Array(1),
-
         trans_id: new Uint8Array(1),
         msg_id: new Uint8Array(1),
-
         num_of_subblocks: new Uint8Array(2),
-
-        block_id: new Uint8Array(2),
-        block_len: new Uint8Array(2),
-        active: new Uint8Array(2),
     };
 
     let sniffer_active = {
@@ -688,44 +825,54 @@ function snifferActive(port, active) {
         active: new Uint8Array(2),
     };
 
-    // count prim_spk_settings size
+    // count sniffer_active size
     let sniffer_active_size = 0;
     for (let prop in sniffer_active) {
         let array = sniffer_active[prop];
         sniffer_active_size += array.BYTES_PER_ELEMENT * array.length;
     }
 
-
     // count acore_msg size
-    let totalBytes = 0;
+    let acore_msg_size = 0;
     for (let prop in acore_msg) {
         let array = acore_msg[prop];
-        totalBytes += array.BYTES_PER_ELEMENT * array.length;
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
     }
+
+    let pnLength = acore_msg_size + sniffer_active_size;
+    let totalBytes = acore_msg_size + sniffer_active_size + frameTypeSize;
+
+    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
 
     acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
     acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
-    UINT16_TO_BSTREAM(totalBytes, acore_msg.pn_length);
+    UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
     acore_msg.pn_robj[0]  = OBJ.ACORE_DSP;
     acore_msg.pn_sobj[0]  = OBJ.ACORE_TOOL;
     acore_msg.msg_id[0]   = HAL_Audio_HW_Control_Request;
     UINT16_TO_BSTREAM(numOfSub, acore_msg.num_of_subblocks);
-    UINT16_TO_BSTREAM(HAL_Audio_SB_Sniffer_Activate, acore_msg.block_id);
-    UINT16_TO_BSTREAM(sniffer_active_size, acore_msg.block_len);
-    UINT16_TO_BSTREAM(snifferState, acore_msg.active);
 
-    // copy acore_msg data to agc_msg
-    let agc_msg = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (let prop in acore_msg) {
-        let array = acore_msg[prop];
-        agc_msg.set(array, offset);
-        offset += array.BYTES_PER_ELEMENT * array.length;
-    }
+    UINT16_TO_BSTREAM(HAL_Audio_SB_Sniffer_Activate, sniffer_active.block_id);
+    UINT16_TO_BSTREAM(sniffer_active_size, sniffer_active.block_len);
+    UINT16_TO_BSTREAM(snifferState, sniffer_active.active);
 
-    console.log(agc_msg);
+    // copy acore_msg data to acoreMsg
+    let acoreMsg = new Uint8Array(acore_msg_size);
+    setMsg(acoreMsg, acore_msg);
+
+    // copy sniffer_active data to snifferEnableMsg
+    let snifferActiveMsg = new Uint8Array(sniffer_active_size);
+    setMsg(snifferActiveMsg, sniffer_active);
+
+    // Combine several message into one message
+    let snifferMsg = new Uint8Array(totalBytes);
+    snifferMsg.set(frameType, 0);
+    snifferMsg.set(acoreMsg, frameType.length);
+    snifferMsg.set(snifferActiveMsg, frameType.length + acoreMsg.length);
+
+    console.log(snifferMsg);
     if (port) {
-        port.send(agc_msg);
+        port.send(snifferMsg);
     }
 };
 

@@ -3,6 +3,7 @@
   <head>
     <title>TinyUSB</title>
     <script src="serial.js"></script>
+    <script src="sniffer.js"></script>
     <script src="algorithm.js"></script>
     <script src="application.js"></script>
     <link rel="stylesheet" href="application.css">
@@ -24,6 +25,10 @@
           </div>
 
           <div class="form-section">
+            <button id="gain_submit">Send</button>
+          </div><br>
+
+          <div class="form-section">
             <h3>DRC</h3>
             <label for="title">Drc Attack Time (4~200): </label>
             <input type="number" id="DrcAttackTime" name="DRC_Attack_Time" min="4" max="200"/>
@@ -38,6 +43,10 @@
           </div>
 
           <div class="form-section">
+            <button id="drc_submit">Send</button>
+          </div><br>
+
+          <div class="form-section">
             <h3>AGC</h3>
             <label for="title">AGC Attack Time (4~200): </label>
             <input type="number" id="AgcAttackTime" name="AGC_Attack_Time" min="4" max="200"/>
@@ -47,6 +56,10 @@
             <br><br><label for="title">AGC Target (10000~30000): </label>
             <input type="number" id="AgcTarget" name="AGC_Target" min="10000" max="30000"/>
           </div>
+
+          <div class="form-section">
+            <button id="agc_submit">Send</button>
+          </div><br>
 
           <div class="form-section">
             <h3>PEQ</h3>
@@ -91,6 +104,10 @@
             <input type="number" id="band_gain_7" name="band_gain" min="-10" max="10"/>
             <input type="number" id="band_gain_8" name="band_gain" min="-10" max="10"/>
           </div>
+
+          <div class="form-section">
+            <button id="peq_submit">Send</button>
+          </div><br>
 
           <div class="form-section">
             <h3>Sniffer Audio Data</h3>
@@ -142,17 +159,30 @@
                 </div>
           </div>
 
-          <div class="form-section">
-            <button id="submit">Send</button>
-          </div>
+            <div class="form-section">
+                <button id="sniffer_submit">Send</button>
+            </div>
 
-          <div class="form-section">
-            <h3>Record</h3>
-            <br><button id=saveAs>Save As...</button><br>
-            <br><button id=startRecordButton>Start recording</button><br>
-            <br><button id=stopRecordButton>Stop recording</button><br>
-            <br><button id=parsePcmFile>Parse pcm file</button><br>
-          </div>
+            <div class="form-section">
+                <h3>Record</h3>
+                <br><button id=selectPath>Select Path</button><br>
+                <br><button id=startRecordButton>Start recording</button><br>
+                <br><button id=stopRecordButton>Stop recording</button><br>
+            </div>
+
+            <div class="form-section">
+                <h3>Parse</h3>
+                <input type="file" id="bin_file" name="bin_file" accept=".bin"/>
+                <button id=parse_bin_file>Parse bin file</button><br><br>
+            </div>
+
+            <div class="form-section"></div>
+                <h3>Play</h3>
+                <input type="file" id="pcm_file" name="pcm_file" accept=".pcm"/>
+                <button id=start_play>Start playing</button>
+                <button id=stop_play>Stop playing</button>
+            </div>
+
         </div>
         </div>
       </div>

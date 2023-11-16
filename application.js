@@ -49,12 +49,15 @@
       }
     });
 
-    // Send the web configuration parameters out
-    document.querySelector("#submit").onclick = () => {
+    // Send the Gain message to mcu
+    document.querySelector("#gain_submit").onclick = () => {
         // Gain
         let gain_db = document.querySelector("#gain").value;
         setGain(gain_db, port);
+    }
 
+    // // Send the Drc message to mcu
+    document.querySelector("#drc_submit").onclick = () => {
         // Drc
         let drcAttackTime = document.querySelector("#DrcAttackTime").value;
         let drcDecayTime = document.querySelector("#DrcDecayTime").value;
@@ -62,13 +65,19 @@
         let drcNoiseGate = document.querySelector("#DrcNoiseGate").value;
         let drcSlope = document.querySelector("#DrcSlope").value;
         setDrc(port, drcAttackTime, drcDecayTime, drcKneeThreshold, drcNoiseGate, drcSlope);
+    }
 
+    // Send the Agc message to mcu
+    document.querySelector("#agc_submit").onclick = () => {
         // Agc
         let agcAttackTime = document.querySelector("#AgcAttackTime").value;
         let agcDecayTime = document.querySelector("#AgcDecayTime").value;
         let agcTarget = document.querySelector("#AgcTarget").value;
         setAgc(port, agcAttackTime, agcDecayTime, agcTarget);
+    }
 
+    // Send the PEQ message to mcu
+    document.querySelector("#peq_submit").onclick = () => {
         // PEQ
         let dir = document.querySelector('input[name="direction"]:checked').value;
         let bandNumber = document.querySelector("#BandNumber").value;
@@ -76,25 +85,34 @@
         let bandQfactor = document.getElementsByName("band_qfactor");
         let bandGain = document.getElementsByName("band_gain");
         setPeq(port, dir, bandNumber, bandCenterFreq, bandQfactor, bandGain);
+    }
 
+    // Send the Sniffer message to mcu
+    document.querySelector("#sniffer_submit").onclick = () => {
         // Sniffer Audio Data
         let audio = document.getElementsByName("audio");
         setSniffer(port, audio);
-        }
+    }
 
-    const saveAs = document.querySelector("#saveAs"),
+    const selectPath = document.querySelector("#selectPath"),
         startRecordButton = document.querySelector("#startRecordButton"),
-        stopRecordButton = document.querySelector("#stopRecordButton");
+        stopRecordButton = document.querySelector("#stopRecordButton"),
+        parseBinFile = document.querySelector("#parse_bin_file"),
+        startPlay = document.querySelector("#start_play"),
+        stopPlay = document.querySelector("#stop_play");
+
+        startRecordButton.disabled = !0;
+        stopRecordButton.disabled = !0;
 
     // select the path of storage
-    saveAs.addEventListener("click", (async()=>{
+    selectPath.addEventListener("click", (async()=>{
         const directoryHandle = await window.showDirectoryPicker();
-        const fileHandle = await directoryHandle.getFileHandle("audio.pcm", { create: true });
+        const fileHandle = await directoryHandle.getFileHandle("audio.bin", { create: true });
         file = await fileHandle.createWritable();
 
         window.file = file;
-        stopRecordButton.disabled = !1,
-        log("Your microphone audio is being recorded locally.")
+        startRecordButton.disabled = !1;
+        log("The path of audio data has been selected.")
         }
     ))
 
@@ -102,6 +120,7 @@
     startRecordButton.addEventListener("click", (()=>{
             if (window.file) {
                 snifferActive(port, true);
+                stopRecordButton.disabled = !1;
             }
         }
     ))
@@ -121,28 +140,75 @@
         }
     ))
 
-    // parse pcm file
-    parsePcmFile.addEventListener("click", (async()=>{
-        const pickerOpts = {
-        types: [
-            {
-            description: "Pcm",
-            accept: {
-                "pcm/*": [".pcm"],
-            },
-            },
-        ],
-        excludeAcceptAllOption: true,
-        multiple: false,
-        };
+    // Parse bin file
+    parseBinFile.addEventListener("click", (async()=> {
+        const binFile = document.getElementById('bin_file');
+        const pathHandle = await window.showDirectoryPicker();
 
-        const [pcmHandle] = await window.showOpenFilePicker(pickerOpts);
-        const pcmFile = await pcmHandle.getFile();
+        const file = binFile.files[0];
         const reader = new FileReader();
+
+        if (!file) {
+            console.log("Please add bin file");
+            return;
+        }
         reader.onload = () => {
             console.log(reader.result);
+            binToPcm(reader.result, pathHandle);
         };
-        reader.readAsArrayBuffer(pcmFile);
+        reader.readAsArrayBuffer(file);
+        }
+    ))
+
+    let intervalId;
+    let intervalTime    = 16; // ms
+    let audioDataSize   = 511;
+    let frameTypeSize   = 1;
+    let frameSize       = audioDataSize + frameTypeSize;
+    let frameType = new Uint8Array(frameTypeSize);
+    frameType[0]  = FRAME_TYPE.AUDIO_DATA;;
+    let frame     = new Uint8Array(frameSize);
+    startPlay.addEventListener("click", (()=> {
+            const binFile = document.getElementById('pcm_file');
+            console.log(binFile);
+            const file = binFile.files[0];
+            if (!file) {
+                console.log("Please add pcm file");
+                return;
+            }
+
+            let audioDataStar  = 0;
+            let audioDataEnd   = audioDataSize;
+            const reader = new FileReader();
+            reader.onload = () => {
+                console.log(reader.result);
+                intervalId = setInterval(function() {
+                    if (port) {
+                        let data        = reader.result.slice(audioDataStar, audioDataEnd);
+
+                        // Add frame head for audio data
+                        let tempData    = new Uint8Array(data);
+                        frame.set(frameType, 0);
+                        frame.set(tempData, frameType.length);
+                        console.log(frame);
+                        port.send(frame);
+                        if (data.byteLength < audioDataSize) {
+                            clearInterval(intervalId);
+                            console.log("Play end");
+                            log("Audio playback ends.")
+                        }
+                    }
+
+                    audioDataStar += audioDataSize;
+                    audioDataEnd  += audioDataSize;
+                }, intervalTime);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    ))
+
+    stopPlay.addEventListener("click", (()=> {
+        clearInterval(intervalId);
         }
     ))
 
