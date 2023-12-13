@@ -1,11 +1,14 @@
 (function() {
   'use strict';
 
-  window.file = null;
-  document.addEventListener('DOMContentLoaded', event => {
-    let connectButton = document.querySelector("#connect");
-    let statusDisplay = document.querySelector('#status');
-    let port;
+    // Static or global value
+    window.file = null;
+    let intervalId;
+
+    document.addEventListener('DOMContentLoaded', event => {
+        let connectButton = document.querySelector("#connect");
+        let statusDisplay = document.querySelector('#status');
+        let port;
 
     function connect() {
       port.connect().then(() => {
@@ -95,14 +98,14 @@
     }
 
     const selectPath = document.querySelector("#selectPath"),
-        startRecordButton = document.querySelector("#startRecordButton"),
-        stopRecordButton = document.querySelector("#stopRecordButton"),
+        startSniffButton = document.querySelector("#startSniffButton"),
+        stopSniffButton = document.querySelector("#stopSniffButton"),
         parseBinFile = document.querySelector("#parse_bin_file"),
         startPlay = document.querySelector("#start_play"),
         stopPlay = document.querySelector("#stop_play");
 
-        startRecordButton.disabled = !0;
-        stopRecordButton.disabled = !0;
+        startSniffButton.disabled = !0;
+        stopSniffButton.disabled = !0;
 
     // select the path of storage
     selectPath.addEventListener("click", (async()=>{
@@ -111,22 +114,22 @@
         file = await fileHandle.createWritable();
 
         window.file = file;
-        startRecordButton.disabled = !1;
+        startSniffButton.disabled = !1;
         log("The path of audio data has been selected.")
         }
     ))
 
-    // record audio data to a file
-    startRecordButton.addEventListener("click", (()=>{
+    // Sniff audio data to a file
+    startSniffButton.addEventListener("click", (()=>{
             if (window.file) {
                 snifferActive(port, true);
-                stopRecordButton.disabled = !1;
+                stopSniffButton.disabled = !1;
             }
         }
     ))
 
-    // stop record
-    stopRecordButton.addEventListener("click", (()=>{
+    // stop sniffing
+    stopSniffButton.addEventListener("click", (()=>{
         if (window.file)
         {
             window.file.close();
@@ -135,8 +138,8 @@
 
         // stop sniffing data
         snifferActive(port, false);
-        stopRecordButton.disabled = !0,
-        log("Your microphone audio has been successfully recorded locally.")
+        stopSniffButton.disabled = !0,
+        log("Your microphone audio has been successfully sniffed locally.")
         }
     ))
 
@@ -160,15 +163,15 @@
         }
     ))
 
-    let intervalId;
-    let intervalTime    = 16; // ms
-    let audioDataSize   = 511;
-    let frameTypeSize   = 1;
-    let frameSize       = audioDataSize + frameTypeSize;
-    let frameType = new Uint8Array(frameTypeSize);
-    frameType[0]  = FRAME_TYPE.AUDIO_DATA;;
-    let frame     = new Uint8Array(frameSize);
     startPlay.addEventListener("click", (()=> {
+            let intervalTime    = 16; // ms
+            let frameTypeSize   = 2;
+            let audioDataSize   = 512 - frameTypeSize;
+            let frameSize       = audioDataSize + frameTypeSize; // The max size of frame is 512.
+            let frameType = new Uint8Array(frameTypeSize);
+            UINT16_TO_BSTREAM(FRAME_TYPE.AUDIO_DATA, frameType);
+            let frame     = new Uint8Array(frameSize);
+
             const binFile = document.getElementById('pcm_file');
             console.log(binFile);
             const file = binFile.files[0];

@@ -57,51 +57,52 @@ async function binToPcm(buf, path) {
         let msg = new Uint8Array(buf.slice(frameStart, frameEnd));
         getMsg(msg, audio_msg);
 
-        // console.log("msg_id " + audio_msg.msg_id[0]);
-        if (audio_msg.msg_id[0] == HAL_Audio_Node_Data_Notify) {
+        if ((audio_msg.pn_rdev[0] == MSG_EP_AGENT.DSP) && (audio_msg.pn_sdev[0] == MSG_EP_AGENT.DSP)) {
+            if (audio_msg.msg_id[0] == HAL_Audio_Node_Data_Notify) {
+                let strSobj = audio_msg.pn_sobj[0].toString();
+                let strDir = audio_msg.dir[0].toString();
+                let strIndex = audio_msg.index[0].toString();
+                let strMode = audio_msg.mode[0].toString();
 
-            // console.log("pn_sobj " + audio_msg.pn_sobj[0]);
-            let strSobj = audio_msg.pn_sobj[0].toString();
-            let strDir = audio_msg.dir[0].toString();
-            let strIndex = audio_msg.index[0].toString();
-            let strMode = audio_msg.mode[0].toString();
+                let sampleRate = new Uint16Array(1);
+                BSTREAM_TO_UINT16(audio_msg.sample_rate, sampleRate);
+                let strSampleRate = sampleRate[0].toString();
 
-            let sampleRate = new Uint16Array(1);
-            BSTREAM_TO_UINT16(audio_msg.sample_rate, sampleRate);
-            let strSampleRate = sampleRate[0].toString();
+                let string = strSobj + "_"+ strDir + "_"+ strIndex + "_"+ strMode + "_"+ strSampleRate + ".pcm";
 
-            let string = strSobj + "_"+ strDir + "_"+ strIndex + "_"+ strMode + "_"+ strSampleRate + ".pcm";
-            // console.log("string " + string);
+                let fileFlag = 0;
+                let audioDataLen = new Uint16Array(1);
+                BSTREAM_TO_UINT16(audio_msg.length, audioDataLen);
+                let audioData = new Uint8Array(buf.slice(frameEnd, frameEnd + audioDataLen[0]));
 
-            let fileFlag = 0;
-            let audioDataLen = new Uint16Array(1);
-            BSTREAM_TO_UINT16(audio_msg.length, audioDataLen);
-            let audioData = new Uint8Array(buf.slice(frameEnd, frameEnd + audioDataLen[0]));
+                for (let i = 0; i < fileName.length; i++) {
+                    if (string == fileName[i]) {
+                        if (pcmFile[i]) {
+                            await pcmFile[i].write(audioData);
+                            break;
+                        }
+                    }
 
-            for (let i = 0; i < fileName.length; i++) {
-                if (string == fileName[i]) {
-                    if (pcmFile[i]) {
-                        await pcmFile[i].write(audioData);
-                        break;
+                    // After poll, string isn't in the fileName
+                    if (i == (fileName.length - 1)) {
+                        fileFlag = 1;
                     }
                 }
 
-                // After poll, string isn't in the fileName
-                if (i == (fileName.length - 1)) {
-                    fileFlag = 1;
+                // Creat one new file
+                if (fileFlag) {
+                    fileName[fileNameNum] = string;
+                    fileHandle[fileNameNum] = await path.getFileHandle(fileName[fileNameNum], { create: true });
+                    pcmFile[fileNameNum] = await fileHandle[fileNameNum].createWritable();
+                    if (pcmFile[fileNameNum]) {
+                        await pcmFile[fileNameNum].write(audioData);
+                    }
+                    fileNameNum ++;
                 }
             }
-
-            // Creat one new file
-            if (fileFlag) {
-                fileName[fileNameNum] = string;
-                fileHandle[fileNameNum] = await path.getFileHandle(fileName[fileNameNum], { create: true });
-                pcmFile[fileNameNum] = await fileHandle[fileNameNum].createWritable();
-                if (pcmFile[fileNameNum]) {
-                    await pcmFile[fileNameNum].write(audioData);
-                }
-                fileNameNum ++;
-            }
+        } else {
+            log("audio.bin file has bad frame, the location in " + frameStart + " bytes.");
+            break;
         }
 
         let len = new Uint16Array(1);

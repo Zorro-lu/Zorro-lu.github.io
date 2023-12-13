@@ -10,11 +10,12 @@
   </head>
   <body>
     <div class="main-content">
-      <h1>TinyUSB - WebUSB Serial Example</h1>
+      <h1>Audio Tool 1.1.1</h1>
       <div class="connect-container">
         <button id="connect" class="button black">Connect</button>
         <span id="status"></span>
       </div>
+<h2>-----------------------------------------------------------------------------------------------------------------------------------------</h2>
       <div class="container">
         <div class="sender">
           <!-- <div class="lines-header">Sender</div> -->
@@ -109,8 +110,9 @@
             <button id="peq_submit">Send</button>
           </div><br>
 
+<h2>-----------------------------------------------------------------------------------------------------------------------------------------</h2>
           <div class="form-section">
-            <h3>Sniffer Audio Data</h3>
+            <h3>Enable Audio Data Sniffer</h3>
                 <div>
                     <input type="checkbox" id="ACORE_DSP_GAIN_IN" name="audio" value="in"/>
                     <label for="ACORE_DSP_GAIN_IN">GAIN_IN</label>
@@ -164,20 +166,20 @@
             </div>
 
             <div class="form-section">
-                <h3>Record</h3>
+                <h3>Sniffing Audio Data</h3>
                 <br><button id=selectPath>Select Path</button><br>
-                <br><button id=startRecordButton>Start recording</button><br>
-                <br><button id=stopRecordButton>Stop recording</button><br>
+                <br><button id=startSniffButton>Start sniffing</button><br>
+                <br><button id=stopSniffButton>Stop sniffing</button><br>
             </div>
 
             <div class="form-section">
                 <h3>Parse</h3>
                 <input type="file" id="bin_file" name="bin_file" accept=".bin"/>
-                <button id=parse_bin_file>Parse bin file</button><br><br>
+                <button id=parse_bin_file>Select Path</button><br><br>
             </div>
-
+<h2>-----------------------------------------------------------------------------------------------------------------------------------------</h2>
             <div class="form-section"></div>
-                <h3>Play</h3>
+                <h3>Player</h3>
                 <input type="file" id="pcm_file" name="pcm_file" accept=".pcm"/>
                 <button id=start_play>Start playing</button>
                 <button id=stop_play>Stop playing</button>

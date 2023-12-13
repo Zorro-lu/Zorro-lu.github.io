@@ -115,7 +115,7 @@ function setGain(string, port) {
     let temp  = parseInt(string, 10);
     let temp1 = Math.pow(10, temp * 0.05) * (1 << 7) + 0.5;
     let gain = Math.floor(temp1);
-    let frameTypeSize   = 1;
+    let frameTypeSize   = 2;
     let numOfSubblocks  = 1;
 
     let frameType = new Uint8Array(frameTypeSize);
@@ -164,7 +164,7 @@ function setGain(string, port) {
     let pnLength    = acore_msg_size + prim_spk_settings_size;
     let totalBytes  = acore_msg_size + prim_spk_settings_size + frameTypeSize;
 
-    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
+    UINT16_TO_BSTREAM(FRAME_TYPE.ACORE_MESSAGE, frameType);
 
     acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
     acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
@@ -229,7 +229,7 @@ function setDrc(port, attack_time_str, decay_time_str,
     slope_temp = slope_temp * (1 << 10);
     let slope  = Math.floor(slope_temp);
 
-    let frameTypeSize   = 1;
+    let frameTypeSize   = 2;
     let numOfSubblocks  = 5;
     let frameType = new Uint8Array(frameTypeSize);
 
@@ -383,7 +383,7 @@ function setAgc(port, attack_time_str, decay_time_str, target_str) {
     let decay_time  = parseInt(decay_time_str, 10);
     let target      = parseInt(target_str, 10);
 
-    let frameTypeSize   = 1;
+    let frameTypeSize   = 2;
     let numOfSubblocks  = 3;
     let frameType = new Uint8Array(frameTypeSize);
 
@@ -500,7 +500,7 @@ function setPeq(port, dir, band_num_str, band_center_freq_str, band_qfactor_str,
     // Coverts the string to a decimal int
     let band_num    = parseInt(band_num_str, 10);
 
-    let frameTypeSize   = 1;
+    let frameTypeSize   = 2;
     let numOfSubblocks  = 3;
     let frameType = new Uint8Array(frameTypeSize);
 
@@ -645,8 +645,8 @@ function setPeq(port, dir, band_num_str, band_center_freq_str, band_qfactor_str,
 
 function snifferEnable(port, obj, enable, value) {
     // It only has one subblock in the audio core message
-    let numOfSub         = 1;
-    let frameTypeSize   = 1;
+    let numOfSub        = 1;
+    let frameTypeSize   = 2;
     let frameType = new Uint8Array(frameTypeSize);
     if (obj.length === 0) {
         return;
@@ -756,7 +756,7 @@ function snifferEnable(port, obj, enable, value) {
     let pnLength = acore_msg_size + sniffer_enable_size;
     let totalBytes = acore_msg_size + sniffer_enable_size + frameTypeSize;
 
-    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
+    UINT16_TO_BSTREAM(FRAME_TYPE.ACORE_MESSAGE, frameType);
 
     acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
     acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
@@ -790,7 +790,7 @@ function snifferEnable(port, obj, enable, value) {
 
 function snifferActive(port, active) {
     let snifferState = 0;
-    let frameTypeSize   = 1;
+    let frameTypeSize   = 2;
     let frameType = new Uint8Array(frameTypeSize);
     // It only has one subblock in the audio core message
     let numOfSub = 1;
@@ -842,7 +842,7 @@ function snifferActive(port, active) {
     let pnLength = acore_msg_size + sniffer_active_size;
     let totalBytes = acore_msg_size + sniffer_active_size + frameTypeSize;
 
-    frameType[0] = FRAME_TYPE.ACORE_MESSAGE;
+    UINT16_TO_BSTREAM(FRAME_TYPE.ACORE_MESSAGE, frameType);
 
     acore_msg.pn_rdev[0]  = MSG_EP_AGENT.DSP;
     acore_msg.pn_sdev[0]  = MSG_EP_AGENT.DSP;
