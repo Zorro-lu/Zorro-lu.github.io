@@ -1,227 +1,237 @@
+//*****************************************************************************
+//
+//! @file application.js
+//!
+//! @brief Handle web operation.
+//!
+//
+//*****************************************************************************
+
 (function() {
-  'use strict';
+'use strict';
 
-    // Static or global value
-    window.file = null;
-    let intervalId;
+/* Static or global variables */
+window.file  = null;
+let interval = {id : 0};
 
-    document.addEventListener('DOMContentLoaded', event => {
-        let connectButton = document.querySelector("#connect");
-        let statusDisplay = document.querySelector('#status');
-        let port;
+document.addEventListener('DOMContentLoaded', event => {
+    let connectButton = document.querySelector("#connect");
+    let statusDisplay = document.querySelector('#status');
+    let port;
 
-    function connect() {
-      port.connect().then(() => {
-        statusDisplay.textContent = '';
-        connectButton.textContent = 'Disconnect';
+    /**
+     * @brief Connect PC with MCU through WebUSB
+     *
+     */
+    function connect()
+    {
+        port.connect().then(
+            () => {
+                statusDisplay.textContent = '';
+                connectButton.textContent = 'Disconnect';
 
-        port.onReceive = data => {
-            writebuf(data);
-        };
-        port.onReceiveError = error => {
-          console.error(error);
-        };
-      }, error => {
-        statusDisplay.textContent = error;
-      });
+                // Invoked when port recive data
+                port.onReceive = data => {
+                    // Write data to file
+                    writeBuf(data);
+                };
+                port.onReceiveError = error => {
+                    console.error(error);
+                };
+            },
+            error => {
+                statusDisplay.textContent = error;
+            });
     }
 
+    // Invoked when connect Button is clicked
     connectButton.addEventListener('click', function() {
-      if (port) {
-        port.disconnect();
-        connectButton.textContent = 'Connect';
-        statusDisplay.textContent = '';
-        port = null;
-      } else {
-        serial.requestPort().then(selectedPort => {
-          port = selectedPort;
-          connect();
-        }).catch(error => {
-          statusDisplay.textContent = error;
-        });
-      }
+        if (port)
+        {
+            port.disconnect();
+            connectButton.textContent = 'Connect';
+            statusDisplay.textContent = '';
+            port                      = null;
+        }
+        else
+        {
+            serial.requestPort()
+                .then(selectedPort => {
+                    port = selectedPort;
+                    // Connect Audio Tool with MCU
+                    connect();
+                })
+                .catch(error => {
+                    statusDisplay.textContent = error;
+                });
+        }
     });
 
-    serial.getPorts().then(ports => {
-      if (ports.length === 0) {
-        statusDisplay.textContent = 'No device found.';
-      } else {
-        statusDisplay.textContent = 'Connecting...';
-        port = ports[0];
-        connect();
-      }
-    });
-
-    // Send the Gain message to mcu
-    document.querySelector("#gain_submit").onclick = () => {
+    // Invoked when Send Button is clicked
+    document.querySelector("#gain_send").onclick = () => {
         // Gain
         let gain_db = document.querySelector("#gain").value;
         setGain(gain_db, port);
-    }
+    };
 
-    // // Send the Drc message to mcu
-    document.querySelector("#drc_submit").onclick = () => {
-        // Drc
+    // Invoked when Send Button is clicked
+    document.querySelector("#drc_send").onclick = () => {
+        // Drc Parameters
         let drcAttackTime = document.querySelector("#DrcAttackTime").value;
-        let drcDecayTime = document.querySelector("#DrcDecayTime").value;
-        let drcKneeThreshold = document.querySelector("#DrcKneeThreshold").value;
+        let drcDecayTime  = document.querySelector("#DrcDecayTime").value;
+        let drcKneeThreshold =
+            document.querySelector("#DrcKneeThreshold").value;
         let drcNoiseGate = document.querySelector("#DrcNoiseGate").value;
-        let drcSlope = document.querySelector("#DrcSlope").value;
-        setDrc(port, drcAttackTime, drcDecayTime, drcKneeThreshold, drcNoiseGate, drcSlope);
-    }
+        let drcSlope     = document.querySelector("#DrcSlope").value;
+        setDrc(port, drcAttackTime, drcDecayTime, drcKneeThreshold,
+               drcNoiseGate, drcSlope);
+    };
 
-    // Send the Agc message to mcu
-    document.querySelector("#agc_submit").onclick = () => {
-        // Agc
+    // Invoked when Send Button is clicked
+    document.querySelector("#agc_send").onclick = () => {
+        // Agc Parameters
         let agcAttackTime = document.querySelector("#AgcAttackTime").value;
-        let agcDecayTime = document.querySelector("#AgcDecayTime").value;
-        let agcTarget = document.querySelector("#AgcTarget").value;
+        let agcDecayTime  = document.querySelector("#AgcDecayTime").value;
+        let agcTarget     = document.querySelector("#AgcTarget").value;
         setAgc(port, agcAttackTime, agcDecayTime, agcTarget);
-    }
+    };
 
-    // Send the PEQ message to mcu
-    document.querySelector("#peq_submit").onclick = () => {
-        // PEQ
-        let dir = document.querySelector('input[name="direction"]:checked').value;
-        let bandNumber = document.querySelector("#BandNumber").value;
+    // Invoked when Send Button is clicked
+    document.querySelector("#peq_ul_send").onclick = () => {
+        // PEQ Parameters
+        let dir            = "uplink";
+        let bandNumber     = document.querySelector("#BandNumber").value;
         let bandCenterFreq = document.getElementsByName("band_center_freq");
-        let bandQfactor = document.getElementsByName("band_qfactor");
-        let bandGain = document.getElementsByName("band_gain");
+        let bandQfactor    = document.getElementsByName("band_qfactor");
+        let bandGain       = document.getElementsByName("band_gain");
         setPeq(port, dir, bandNumber, bandCenterFreq, bandQfactor, bandGain);
-    }
+    };
 
-    // Send the Sniffer message to mcu
-    document.querySelector("#sniffer_submit").onclick = () => {
+    // Invoked when Send Button is clicked
+    document.querySelector("#peq_dl_send").onclick = () => {
+        // PEQ Parameters
+        let dir            = "downlink";
+        let bandNumber     = document.querySelector("#BandNumber").value;
+        let bandCenterFreq = document.getElementsByName("band_center_freq");
+        let bandQfactor    = document.getElementsByName("band_qfactor");
+        let bandGain       = document.getElementsByName("band_gain");
+        setPeq(port, dir, bandNumber, bandCenterFreq, bandQfactor, bandGain);
+    };
+
+    // Invoked when Send Button is clicked
+    document.querySelector("#sniffer_send").onclick = () => {
         // Sniffer Audio Data
         let audio = document.getElementsByName("audio");
         setSniffer(port, audio);
-    }
+    };
 
-    const selectPath = document.querySelector("#selectPath"),
-        startSniffButton = document.querySelector("#startSniffButton"),
-        stopSniffButton = document.querySelector("#stopSniffButton"),
-        parseBinFile = document.querySelector("#parse_bin_file"),
-        startPlay = document.querySelector("#start_play"),
-        stopPlay = document.querySelector("#stop_play");
+    const selectPathButton   = document.querySelector("#select_path_button");
+    const startCaptureButton = document.querySelector("#start_capture_button");
+    const stopCaptureButton  = document.querySelector("#stop_capture_button");
+    const parseBinFileButton = document.querySelector("#parse_bin_file_button");
+    const startPlayButton    = document.querySelector("#start_play_button");
+    const stopPlayButton     = document.querySelector("#stop_play_button");
 
-        startSniffButton.disabled = !0;
-        stopSniffButton.disabled = !0;
+    // Disable Button
+    startCaptureButton.disabled = !0;
+    stopCaptureButton.disabled  = !0;
 
-    // select the path of storage
-    selectPath.addEventListener("click", (async()=>{
-        const directoryHandle = await window.showDirectoryPicker();
-        const fileHandle = await directoryHandle.getFileHandle("audio.bin", { create: true });
-        file = await fileHandle.createWritable();
+    // Invoked when Select Path Button is clicked
+    selectPathButton.addEventListener(
+        "click", (async () => {
+            const directoryHandle = await window.showDirectoryPicker();
+            const fileHandle      = await directoryHandle.getFileHandle(
+                "audio.bin", {create : true});
+            file = await fileHandle.createWritable();
 
-        window.file = file;
-        startSniffButton.disabled = !1;
-        log("The path of audio data has been selected.")
-        }
-    ))
+            window.file                 = file;
+            startCaptureButton.disabled = !1;
+            log("The path of audio data has been selected.")
+        }))
 
-    // Sniff audio data to a file
-    startSniffButton.addEventListener("click", (()=>{
-            if (window.file) {
-                snifferActive(port, true);
-                stopSniffButton.disabled = !1;
+    // Invoked when Start Capture Button is clicked
+    startCaptureButton.addEventListener("click", (() => {
+                                            if (window.file)
+                                            {
+                                                snifferActive(port, true);
+                                                stopCaptureButton.disabled = !1;
+                                            }
+                                        }))
+
+    // Invoked when Stop Capture Button is clicked
+    stopCaptureButton.addEventListener(
+        "click", (() => {
+            if (window.file)
+            {
+                window.file.close();
+                window.file = null;
             }
-        }
-    ))
 
-    // stop sniffing
-    stopSniffButton.addEventListener("click", (()=>{
-        if (window.file)
-        {
-            window.file.close();
-            window.file = null;
-        }
+            // Stop capturing data
+            snifferActive(port, false);
+            stopCaptureButton.disabled = !0,
+            log("Your microphone audio has been successfully sniffed locally.")
+        }))
 
-        // stop sniffing data
-        snifferActive(port, false);
-        stopSniffButton.disabled = !0,
-        log("Your microphone audio has been successfully sniffed locally.")
-        }
-    ))
+    // Invoked when Parse Bin File Button is clicked
+    parseBinFileButton.addEventListener(
+        "click", (async () => {
+            const binFile    = document.getElementById('bin_file');
+            const pathHandle = await window.showDirectoryPicker();
 
-    // Parse bin file
-    parseBinFile.addEventListener("click", (async()=> {
-        const binFile = document.getElementById('bin_file');
-        const pathHandle = await window.showDirectoryPicker();
+            const file   = binFile.files[0];
+            const reader = new FileReader();
 
-        const file = binFile.files[0];
-        const reader = new FileReader();
+            if (!file)
+            {
+                console.log("Please add bin file");
+                return;
+            }
 
-        if (!file) {
-            console.log("Please add bin file");
-            return;
-        }
-        reader.onload = () => {
-            console.log(reader.result);
-            binToPcm(reader.result, pathHandle);
-        };
-        reader.readAsArrayBuffer(file);
-        }
-    ))
+            // File read complete
+            reader.onload = () => {
+                console.log(reader.result);
+                // Parse bin file to pcm file
+                binToRaw(reader.result, pathHandle);
+            };
+            reader.readAsArrayBuffer(file);
+        }))
 
-    startPlay.addEventListener("click", (()=> {
-            let intervalTime    = 16; // ms
-            let frameTypeSize   = 2;
-            let audioDataSize   = 512 - frameTypeSize;
-            let frameSize       = audioDataSize + frameTypeSize; // The max size of frame is 512.
-            let frameType = new Uint8Array(frameTypeSize);
-            UINT16_TO_BSTREAM(FRAME_TYPE.AUDIO_DATA, frameType);
-            let frame     = new Uint8Array(frameSize);
-
+    // Invoked when Start Play Button is clicked
+    startPlayButton.addEventListener(
+        "click", (() => {
             const binFile = document.getElementById('pcm_file');
-            console.log(binFile);
-            const file = binFile.files[0];
-            if (!file) {
+            const file    = binFile.files[0];
+            if (!file)
+            {
                 console.log("Please add pcm file");
                 return;
             }
 
-            let audioDataStar  = 0;
-            let audioDataEnd   = audioDataSize;
             const reader = new FileReader();
+            // File read complete
             reader.onload = () => {
                 console.log(reader.result);
-                intervalId = setInterval(function() {
-                    if (port) {
-                        let data        = reader.result.slice(audioDataStar, audioDataEnd);
-
-                        // Add frame head for audio data
-                        let tempData    = new Uint8Array(data);
-                        frame.set(frameType, 0);
-                        frame.set(tempData, frameType.length);
-                        console.log(frame);
-                        port.send(frame);
-                        if (data.byteLength < audioDataSize) {
-                            clearInterval(intervalId);
-                            console.log("Play end");
-                            log("Audio playback ends.")
-                        }
-                    }
-
-                    audioDataStar += audioDataSize;
-                    audioDataEnd  += audioDataSize;
-                }, intervalTime);
+                // Play pcm file
+                playFile(reader.result, port, interval);
             };
             reader.readAsArrayBuffer(file);
-        }
-    ))
+        }))
 
-    stopPlay.addEventListener("click", (()=> {
-        clearInterval(intervalId);
-        }
-    ))
+    // Invoked when Stop Play Button is clicked
+    stopPlayButton.addEventListener("click", (() => {
+                                        clearInterval(interval.id);
+                                        interval.id = null;
+                                    }))
 
-    window.onunhandledrejection = e=>{
-        log(`> ${e.reason}`)
-    }
+    // Print promise rejection
+    window.onunhandledrejection = e => {
+        log(`> ${e.reason}`);
+    };
 
-    window.onerror = e=>{
-        log(`> ${e}`)
-    }
-
-  });
-})();
+    // Print global error
+    window.onerror = e => {
+        log(`> ${e}`);
+    };
+});   // DOMContentLoaded
+})(); // function()
