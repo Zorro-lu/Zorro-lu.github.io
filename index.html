@@ -8,6 +8,9 @@
     <script src="algorithm.js"></script>
     <script src="application.js"></script>
     <script src="log.js"></script>
+    <script src="mcps.js"></script>
+    <script src="parameters.js"></script>
+    <script src="https://cdn.staticfile.org/Chart.js/3.9.1/chart.js"></script>
     <link rel="stylesheet" href="application.css">
   </head>
   <body>
@@ -21,6 +24,26 @@
       <div class="connect-container">
         <button id="connect" class="button black">Connect</button>
         <span id="status"></span>
+      </div>
+<!-------------------------------------------------------------------------------------
+-
+-                                   Mcps Function
+-
+--------------------------------------------------------------------------------------->
+<h2>-----------------------------------------------------------------------------------------------------------------------------------------</h2>
+      <h4 id="aec-mcps"></h4>
+      <h4 id="ns-mcps"></h4>
+      <h4 id="peq-ul-mcps"></h4>
+      <h4 id="peq-dl-mcps"></h4>
+      <h4 id="mbdrc-mcps"></h4>
+      <div class="mcps-chart">
+        <canvas id="McpsChart" width="650" height="290"></canvas>
+      </div><br>
+      <div class="form-section">
+        <button id="start_mcps">Start Reading</button>
+      </div><br>
+      <div class="form-section">
+        <button id="stop_mcps">Stop Reading</button>
       </div>
 <h2>-----------------------------------------------------------------------------------------------------------------------------------------</h2>
 <!-------------------------------------------------------------------------------------
@@ -41,21 +64,79 @@
           </div><br>
 
           <div class="form-section">
-            <h3>DRC</h3>
-            <label for="title">Drc Attack Time (4~200): </label>
-            <input type="number" id="DrcAttackTime" name="DRC_Attack_Time" min="4" max="200" value="10"/>
+            <h3>DRC_UL</h3>
+            <label for="title">DRC Attack Time (4~200): </label>
+            <input type="number" id="DrcUlAttackTime" name="DRC_UL_Attack_Time" min="4" max="200" value="10"/>
             <br><br><label for="title">DRC Decay Time (4~200): </label>
-            <input type="number" id="DrcDecayTime" name="DRC_Decay_Time" min="4" max="200" value="110"/>
+            <input type="number" id="DrcUlDecayTime" name="DRC_UL_Decay_Time" min="4" max="200" value="110"/>
             <br><br><label for="title">DRC Knee Threshold (-30~-10): </label>
-            <input type="number" id="DrcKneeThreshold" name="DRC_Knee_Threshold" min="-30" max="-10" value="-10"/>
+            <input type="number" id="DrcUlKneeThreshold" name="DRC_UL_Knee_Threshold" min="-30" max="-10" value="-10"/>
             <br><br><label for="title">DRC Noise Gate (-80~-25): </label>
-            <input type="number" id="DrcNoiseGate" name="DRC_Noise_Gate" min="-80" max="-25" value="-30"/>
+            <input type="number" id="DrcUlNoiseGate" name="DRC_UL_Noise_Gate" min="-80" max="-25" value="-30"/>
             <br><br><label for="title">DRC Slope (0.01~1.0): </label>
-            <input type="number" id="DrcSlope" name="DRC_Slope" step="0.01" min="0.01" max="1" value="0.1"/>
+            <input type="number" id="DrcUlSlope" name="DRC_UL_Slope" step="0.01" min="0.01" max="1" value="0.1"/>
           </div>
 
           <div class="form-section">
-            <button id="drc_send">Send</button>
+            <button id="drc_ul_send">Send</button>
+          </div><br>
+
+          <div class="form-section">
+            <h3>DRC_DL</h3>
+            <label for="title">DRC Attack Time (4~200): </label>
+            <input type="number" id="DrcDlAttackTime" name="DRC_DL_Attack_Time" min="4" max="200" value="10"/>
+            <br><br><label for="title">DRC Decay Time (4~200): </label>
+            <input type="number" id="DrcDlDecayTime" name="DRC_DL_Decay_Time" min="4" max="200" value="110"/>
+            <br><br><label for="title">DRC Knee Threshold (-30~-10): </label>
+            <input type="number" id="DrcDlKneeThreshold" name="DRC_DL_Knee_Threshold" min="-30" max="-10" value="-10"/>
+            <br><br><label for="title">DRC Noise Gate (-80~-25): </label>
+            <input type="number" id="DrcDlNoiseGate" name="DRC_DL_Noise_Gate" min="-80" max="-25" value="-30"/>
+            <br><br><label for="title">DRC Slope (0.01~1.0): </label>
+            <input type="number" id="DrcDlSlope" name="DRC_DL_Slope" step="0.01" min="0.01" max="1" value="0.1"/>
+          </div>
+
+          <div class="form-section">
+            <button id="drc_dl_send">Send</button>
+          </div><br>
+
+          <div class="form-section">
+            <h3>MBDRC</h3>
+            <label for="title">Band Number (1~9): </label>
+            <input type="number" id="MbdrcBandNumber" name="Band_Number" min="1" max="9" value="4"/>
+            <br><br><label for="title">Frequency High Bound(0~8000): </label>
+            <input type="number" id="MbdrcHighBound0" name="MbdrcHighBound" min="0" max="8000" value="200"/>
+            <input type="number" id="MbdrcHighBound1" name="MbdrcHighBound" min="0" max="8000" value="2000"/>
+            <input type="number" id="MbdrcHighBound2" name="MbdrcHighBound" min="0" max="8000" value="3500"/>
+            <input type="number" id="MbdrcHighBound3" name="MbdrcHighBound" min="0" max="8000" value="8000"/>
+            <input type="number" id="MbdrcHighBound4" name="MbdrcHighBound" min="0" max="8000" value="0"/>
+            <input type="number" id="MbdrcHighBound5" name="MbdrcHighBound" min="0" max="8000" value="0"/>
+            <input type="number" id="MbdrcHighBound6" name="MbdrcHighBound" min="0" max="8000" value="0"/>
+            <input type="number" id="MbdrcHighBound7" name="MbdrcHighBound" min="0" max="8000" value="0"/>
+            <input type="number" id="MbdrcHighBound8" name="MbdrcHighBound" min="0" max="8000" value="0"/>
+            <br><br><label for="title">Compress Threshold (-100~0): </label>
+            <input type="number" id="MbdrcCompThd0" name="MbdrcCompThd" step="1" min="-100" max="0" value="-20"/>
+            <input type="number" id="MbdrcCompThd1" name="MbdrcCompThd" step="1" min="-100" max="0" value="-12"/>
+            <input type="number" id="MbdrcCompThd2" name="MbdrcCompThd" step="1" min="-100" max="0" value="-20"/>
+            <input type="number" id="MbdrcCompThd3" name="MbdrcCompThd" step="1" min="-100" max="0" value="-30"/>
+            <input type="number" id="MbdrcCompThd4" name="MbdrcCompThd" step="1" min="-100" max="0" value="0"/>
+            <input type="number" id="MbdrcCompThd5" name="MbdrcCompThd" step="1" min="-100" max="0" value="0"/>
+            <input type="number" id="MbdrcCompThd6" name="MbdrcCompThd" step="1" min="-100" max="0" value="0"/>
+            <input type="number" id="MbdrcCompThd7" name="MbdrcCompThd" step="1" min="-100" max="0" value="0"/>
+            <input type="number" id="MbdrcCompThd8" name="MbdrcCompThd" step="1" min="-100" max="0" value="0"/>
+            <br><br><label for="title">Compress Slope (0~1.0): </label>
+            <input type="number" id="MbdrcCompSlope0" name="MbdrcCompSlope" min="0" max="1.0" value="0.2"/>
+            <input type="number" id="MbdrcCompSlope1" name="MbdrcCompSlope" min="0" max="1.0" value="0.3"/>
+            <input type="number" id="MbdrcCompSlope2" name="MbdrcCompSlope" min="0" max="1.0" value="0.5"/>
+            <input type="number" id="MbdrcCompSlope3" name="MbdrcCompSlope" min="0" max="1.0" value="0.7"/>
+            <input type="number" id="MbdrcCompSlope4" name="MbdrcCompSlope" min="0" max="1.0" value="0"/>
+            <input type="number" id="MbdrcCompSlope5" name="MbdrcCompSlope" min="0" max="1.0" value="0"/>
+            <input type="number" id="MbdrcCompSlope6" name="MbdrcCompSlope" min="0" max="1.0" value="0"/>
+            <input type="number" id="MbdrcCompSlope7" name="MbdrcCompSlope" min="0" max="1.0" value="0"/>
+            <input type="number" id="MbdrcCompSlope8" name="MbdrcCompSlope" min="0" max="1.0" value="0"/>
+          </div>
+
+          <div class="form-section">
+            <button id="mbdrc_send">Send</button>
           </div><br>
 
           <div class="form-section">
@@ -75,37 +156,37 @@
           <div class="form-section">
             <h3>PEQ_UL</h3>
             <label for="title">Band Number (1~9): </label>
-            <input type="number" id="BandNumber" name="Band_Number" min="1" max="9" value="9"/>
+            <input type="number" id="peq_ul_band_number" name="peq_ul_band_number" min="1" max="9" value="9"/>
             <br><br><label for="title">Band Center Frequency (60~8000): </label>
-            <input type="number" id="band_center_freq_0" name="band_center_freq" min="60" max="8000" value="500"/>
-            <input type="number" id="band_center_freq_1" name="band_center_freq" min="60" max="8000" value="750"/>
-            <input type="number" id="band_center_freq_2" name="band_center_freq" min="60" max="8000" value="1000"/>
-            <input type="number" id="band_center_freq_3" name="band_center_freq" min="60" max="8000" value="1500"/>
-            <input type="number" id="band_center_freq_4" name="band_center_freq" min="60" max="8000" value="2000"/>
-            <input type="number" id="band_center_freq_5" name="band_center_freq" min="60" max="8000" value="3000"/>
-            <input type="number" id="band_center_freq_6" name="band_center_freq" min="60" max="8000" value="4000"/>
-            <input type="number" id="band_center_freq_7" name="band_center_freq" min="60" max="8000" value="5000"/>
-            <input type="number" id="band_center_freq_8" name="band_center_freq" min="60" max="8000" value="6000"/>
+            <input type="number" id="peq_ul_band_center_freq_0" name="peq_ul_band_center_freq" min="60" max="8000" value="500"/>
+            <input type="number" id="peq_ul_band_center_freq_1" name="peq_ul_band_center_freq" min="60" max="8000" value="750"/>
+            <input type="number" id="peq_ul_band_center_freq_2" name="peq_ul_band_center_freq" min="60" max="8000" value="1000"/>
+            <input type="number" id="peq_ul_band_center_freq_3" name="peq_ul_band_center_freq" min="60" max="8000" value="1500"/>
+            <input type="number" id="peq_ul_band_center_freq_4" name="peq_ul_band_center_freq" min="60" max="8000" value="2000"/>
+            <input type="number" id="peq_ul_band_center_freq_5" name="peq_ul_band_center_freq" min="60" max="8000" value="3000"/>
+            <input type="number" id="peq_ul_band_center_freq_6" name="peq_ul_band_center_freq" min="60" max="8000" value="4000"/>
+            <input type="number" id="peq_ul_band_center_freq_7" name="peq_ul_band_center_freq" min="60" max="8000" value="5000"/>
+            <input type="number" id="peq_ul_band_center_freq_8" name="peq_ul_band_center_freq" min="60" max="8000" value="6000"/>
             <br><br><label for="title">Band Qfactor (0.1~5.0): </label>
-            <input type="number" id="band_qfractor_0" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="0.7"/>
-            <input type="number" id="band_qfractor_1" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_2" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_3" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_4" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_5" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_6" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_7" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_8" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_ul_band_qfractor_0" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="0.7"/>
+            <input type="number" id="peq_ul_band_qfractor_1" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_ul_band_qfractor_2" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_ul_band_qfractor_3" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_ul_band_qfractor_4" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_ul_band_qfractor_5" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_ul_band_qfractor_6" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_ul_band_qfractor_7" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_ul_band_qfractor_8" name="peq_ul_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
             <br><br><label for="title">Band Gain (-10~10): </label>
-            <input type="number" id="band_gain_0" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_1" name="band_gain" min="-10" max="10" value="2"/>
-            <input type="number" id="band_gain_2" name="band_gain" min="-10" max="10" value="2"/>
-            <input type="number" id="band_gain_3" name="band_gain" min="-10" max="10" value="2"/>
-            <input type="number" id="band_gain_4" name="band_gain" min="-10" max="10" value="2"/>
-            <input type="number" id="band_gain_5" name="band_gain" min="-10" max="10" value="2"/>
-            <input type="number" id="band_gain_6" name="band_gain" min="-10" max="10" value="2"/>
-            <input type="number" id="band_gain_7" name="band_gain" min="-10" max="10" value="2"/>
-            <input type="number" id="band_gain_8" name="band_gain" min="-10" max="10" value="2"/>
+            <input type="number" id="peq_ul_band_gain_0" name="peq_ul_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_ul_band_gain_1" name="peq_ul_band_gain" min="-10" max="10" value="2"/>
+            <input type="number" id="peq_ul_band_gain_2" name="peq_ul_band_gain" min="-10" max="10" value="2"/>
+            <input type="number" id="peq_ul_band_gain_3" name="peq_ul_band_gain" min="-10" max="10" value="2"/>
+            <input type="number" id="peq_ul_band_gain_4" name="peq_ul_band_gain" min="-10" max="10" value="2"/>
+            <input type="number" id="peq_ul_band_gain_5" name="peq_ul_band_gain" min="-10" max="10" value="2"/>
+            <input type="number" id="peq_ul_band_gain_6" name="peq_ul_band_gain" min="-10" max="10" value="2"/>
+            <input type="number" id="peq_ul_band_gain_7" name="peq_ul_band_gain" min="-10" max="10" value="2"/>
+            <input type="number" id="peq_ul_band_gain_8" name="peq_ul_band_gain" min="-10" max="10" value="2"/>
           </div>
 
           <div class="form-section">
@@ -115,37 +196,37 @@
           <div class="form-section">
             <h3>PEQ_DL</h3>
             <label for="title">Band Number (1~9): </label>
-            <input type="number" id="BandNumber" name="Band_Number" min="1" max="9" value="9"/>
+            <input type="number" id="peq_dl_band_number" name="peq_dl_band_number" min="1" max="9" value="9"/>
             <br><br><label for="title">Band Center Frequency (60~8000): </label>
-            <input type="number" id="band_center_freq_0" name="band_center_freq" min="60" max="8000" value="500"/>
-            <input type="number" id="band_center_freq_1" name="band_center_freq" min="60" max="8000" value="750"/>
-            <input type="number" id="band_center_freq_2" name="band_center_freq" min="60" max="8000" value="1000"/>
-            <input type="number" id="band_center_freq_3" name="band_center_freq" min="60" max="8000" value="1500"/>
-            <input type="number" id="band_center_freq_4" name="band_center_freq" min="60" max="8000" value="2000"/>
-            <input type="number" id="band_center_freq_5" name="band_center_freq" min="60" max="8000" value="3000"/>
-            <input type="number" id="band_center_freq_6" name="band_center_freq" min="60" max="8000" value="4000"/>
-            <input type="number" id="band_center_freq_7" name="band_center_freq" min="60" max="8000" value="5000"/>
-            <input type="number" id="band_center_freq_8" name="band_center_freq" min="60" max="8000" value="6000"/>
+            <input type="number" id="peq_dl_band_center_freq_0" name="peq_dl_band_center_freq" min="60" max="8000" value="500"/>
+            <input type="number" id="peq_dl_band_center_freq_1" name="peq_dl_band_center_freq" min="60" max="8000" value="750"/>
+            <input type="number" id="peq_dl_band_center_freq_2" name="peq_dl_band_center_freq" min="60" max="8000" value="1000"/>
+            <input type="number" id="peq_dl_band_center_freq_3" name="peq_dl_band_center_freq" min="60" max="8000" value="1500"/>
+            <input type="number" id="peq_dl_band_center_freq_4" name="peq_dl_band_center_freq" min="60" max="8000" value="2000"/>
+            <input type="number" id="peq_dl_band_center_freq_5" name="peq_dl_band_center_freq" min="60" max="8000" value="3000"/>
+            <input type="number" id="peq_dl_band_center_freq_6" name="peq_dl_band_center_freq" min="60" max="8000" value="4000"/>
+            <input type="number" id="peq_dl_band_center_freq_7" name="peq_dl_band_center_freq" min="60" max="8000" value="5000"/>
+            <input type="number" id="peq_dl_band_center_freq_8" name="peq_dl_band_center_freq" min="60" max="8000" value="6000"/>
             <br><br><label for="title">Band Qfactor (0.1~5.0): </label>
-            <input type="number" id="band_qfractor_0" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="0.7"/>
-            <input type="number" id="band_qfractor_1" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_2" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_3" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_4" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_5" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_6" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_7" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
-            <input type="number" id="band_qfractor_8" name="band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_dl_band_qfractor_0" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="0.7"/>
+            <input type="number" id="peq_dl_band_qfractor_1" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_dl_band_qfractor_2" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_dl_band_qfractor_3" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_dl_band_qfractor_4" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_dl_band_qfractor_5" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_dl_band_qfractor_6" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_dl_band_qfractor_7" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
+            <input type="number" id="peq_dl_band_qfractor_8" name="peq_dl_band_qfactor" step="0.1" min="0.1" max="5.0" value="2.5"/>
             <br><br><label for="title">Band Gain (-10~10): </label>
-            <input type="number" id="band_gain_0" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_1" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_2" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_3" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_4" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_5" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_6" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_7" name="band_gain" min="-10" max="10" value="0"/>
-            <input type="number" id="band_gain_8" name="band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_0" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_1" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_2" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_3" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_4" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_5" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_6" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_7" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
+            <input type="number" id="peq_dl_band_gain_8" name="peq_dl_band_gain" min="-10" max="10" value="0"/>
           </div>
 
           <div class="form-section">
@@ -173,19 +254,31 @@
                     <input type="checkbox" id="ACORE_DSP_AGC_OUT" name="audio" value="output"/>
                     <label for="ACORE_DSP_AGC_OUT">AGC_OUT</label>
 
-                    <input type="checkbox" id="ACORE_DSP_DRC_IN" name="audio" value="input"/>
-                    <label for="ACORE_DSP_DRC_IN">DRC_IN</label>
+                    <input type="checkbox" id="ACORE_DSP_DRC_UL_IN" name="audio" value="input"/>
+                    <label for="ACORE_DSP_DRC_UL_IN">DRC_UL_IN</label>
 
-                    <input type="checkbox" id="ACORE_DSP_DRC_OUT" name="audio" value="output"/>
-                    <label for="ACORE_DSP_DRC_OUT">DRC_OUT</label>
+                    <input type="checkbox" id="ACORE_DSP_DRC_UL_OUT" name="audio" value="output"/>
+                    <label for="ACORE_DSP_DRC_UL_OUT">DRC_UL_OUT</label>
 
+                    <input type="checkbox" id="ACORE_DSP_DRC_DL_IN" name="audio" value="input"/>
+                    <label for="ACORE_DSP_DRC_DL_IN">DRC_DL_IN</label>
+
+                    <input type="checkbox" id="ACORE_DSP_DRC_DL_OUT" name="audio" value="output"/>
+                    <label for="ACORE_DSP_DRC_DL_OUT">DRC_DL_OUT</label>
+
+                    <input type="checkbox" id="ACORE_DSP_MBDRC_IN" name="audio" value="input"/>
+                    <label for="ACORE_DSP_MBDRC_IN">MBDRC_IN</label>
+
+                    <input type="checkbox" id="ACORE_DSP_MBDRC_OUT" name="audio" value="output"/>
+                    <label for="ACORE_DSP_DRC_DL_OUT">MBDRC_OUT</label>
+
+                    <br><br>
                     <input type="checkbox" id="ACORE_DSP_PEQ_UL_IN" name="audio" value="input"/>
                     <label for="ACORE_DSP_PEQ_UL_IN">PEQ_UL_IN</label>
 
                     <input type="checkbox" id="ACORE_DSP_PEQ_UL_OUT" name="audio" value="output"/>
                     <label for="ACORE_DSP_PEQ_UL_OUT">PEQ_UL_OUT</label>
 
-                    <br><br>
                     <input type="checkbox" id="ACORE_DSP_PEQ_DL_IN" name="audio" value="input"/>
                     <label for="ACORE_DSP_PEQ_DL_IN">PEQ_DL_IN</label>
 

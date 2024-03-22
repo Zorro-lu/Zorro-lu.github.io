@@ -10,10 +10,6 @@
 (function() {
 'use strict';
 
-/* Static or global variables */
-window.file  = null;
-let interval = {id : 0};
-
 document.addEventListener('DOMContentLoaded', event => {
     let connectButton = document.querySelector("#connect");
     let statusDisplay = document.querySelector('#status');
@@ -30,13 +26,14 @@ document.addEventListener('DOMContentLoaded', event => {
                 statusDisplay.textContent = '';
                 connectButton.textContent = 'Disconnect';
 
-                // Invoked when port recive data
+                // Invoked when port receive data
                 port.onReceive = data => {
-                    // Write data to file
-                    writeBuf(data);
+                    // Recive message from AP5
+                    receiveMsg(data);
                 };
                 port.onReceiveError = error => {
                     console.error(error);
+                    cleanStatus();
                 };
             },
             error => {
@@ -67,6 +64,30 @@ document.addEventListener('DOMContentLoaded', event => {
         }
     });
 
+    // Creat MCPS chart
+    const ctx       = document.getElementById('McpsChart').getContext('2d');
+    handleMcpsChart = new Chart(ctx, mcpsChartConfig);
+
+    // Display default MCPS
+    document.getElementById("aec-mcps").textContent    = "AEC : 0MCPS";
+    document.getElementById("ns-mcps").textContent     = "NS : 0MCPS";
+    document.getElementById("peq-ul-mcps").textContent = "PEQ_UL : 0MCPS";
+    document.getElementById("peq-dl-mcps").textContent = "PEQ_DL : 0MCPS";
+    document.getElementById("mbdrc-mcps").textContent  = "MBDRC : 0MCPS";
+
+    // Invoked when Start Reading Button is clicked
+    document.querySelector("#start_mcps").onclick = () => {
+        // Update MCPS every 1 second.
+        mcpsInterval.id = setInterval(updateMcps, 1000, port);
+    };
+
+    // Invoked when Stop Reading Button is clicked
+    document.querySelector("#stop_mcps").onclick = () => {
+        // Update MCPS every 1 second.
+        clearInterval(mcpsInterval.id);
+        mcpsInterval.id = null;
+    };
+
     // Invoked when Send Button is clicked
     document.querySelector("#gain_send").onclick = () => {
         // Gain
@@ -75,16 +96,41 @@ document.addEventListener('DOMContentLoaded', event => {
     };
 
     // Invoked when Send Button is clicked
-    document.querySelector("#drc_send").onclick = () => {
-        // Drc Parameters
-        let drcAttackTime = document.querySelector("#DrcAttackTime").value;
-        let drcDecayTime  = document.querySelector("#DrcDecayTime").value;
+    document.querySelector("#drc_ul_send").onclick = () => {
+        // DRC-UL Parameters
+        let dir           = "uplink";
+        let drcAttackTime = document.querySelector("#DrcUlAttackTime").value;
+        let drcDecayTime  = document.querySelector("#DrcUlDecayTime").value;
         let drcKneeThreshold =
-            document.querySelector("#DrcKneeThreshold").value;
-        let drcNoiseGate = document.querySelector("#DrcNoiseGate").value;
-        let drcSlope     = document.querySelector("#DrcSlope").value;
-        setDrc(port, drcAttackTime, drcDecayTime, drcKneeThreshold,
+            document.querySelector("#DrcUlKneeThreshold").value;
+        let drcNoiseGate = document.querySelector("#DrcUlNoiseGate").value;
+        let drcSlope     = document.querySelector("#DrcUlSlope").value;
+        setDrc(port, dir, drcAttackTime, drcDecayTime, drcKneeThreshold,
                drcNoiseGate, drcSlope);
+    };
+
+    // Invoked when Send Button is clicked
+    document.querySelector("#drc_dl_send").onclick = () => {
+        // DRC-DL Parameters
+        let dir           = "downlink";
+        let drcAttackTime = document.querySelector("#DrcDlAttackTime").value;
+        let drcDecayTime  = document.querySelector("#DrcDlDecayTime").value;
+        let drcKneeThreshold =
+            document.querySelector("#DrcDlKneeThreshold").value;
+        let drcNoiseGate = document.querySelector("#DrcDlNoiseGate").value;
+        let drcSlope     = document.querySelector("#DrcDlSlope").value;
+        setDrc(port, dir, drcAttackTime, drcDecayTime, drcKneeThreshold,
+               drcNoiseGate, drcSlope);
+    };
+
+    // Invoked when Send Button is clicked
+    document.querySelector("#mbdrc_send").onclick = () => {
+        // MBDRC Parameters
+        let bandNumber = document.querySelector("#MbdrcBandNumber").value;
+        let highBound  = document.getElementsByName("MbdrcHighBound");
+        let compThd    = document.getElementsByName("MbdrcCompThd");
+        let compSlope  = document.getElementsByName("MbdrcCompSlope");
+        setMbdrc(port, bandNumber, highBound, compThd, compSlope);
     };
 
     // Invoked when Send Button is clicked
@@ -99,22 +145,24 @@ document.addEventListener('DOMContentLoaded', event => {
     // Invoked when Send Button is clicked
     document.querySelector("#peq_ul_send").onclick = () => {
         // PEQ Parameters
-        let dir            = "uplink";
-        let bandNumber     = document.querySelector("#BandNumber").value;
-        let bandCenterFreq = document.getElementsByName("band_center_freq");
-        let bandQfactor    = document.getElementsByName("band_qfactor");
-        let bandGain       = document.getElementsByName("band_gain");
+        let dir        = "uplink";
+        let bandNumber = document.querySelector("#peq_ul_band_number").value;
+        let bandCenterFreq =
+            document.getElementsByName("peq_ul_band_center_freq");
+        let bandQfactor = document.getElementsByName("peq_ul_band_qfactor");
+        let bandGain    = document.getElementsByName("peq_ul_band_gain");
         setPeq(port, dir, bandNumber, bandCenterFreq, bandQfactor, bandGain);
     };
 
     // Invoked when Send Button is clicked
     document.querySelector("#peq_dl_send").onclick = () => {
         // PEQ Parameters
-        let dir            = "downlink";
-        let bandNumber     = document.querySelector("#BandNumber").value;
-        let bandCenterFreq = document.getElementsByName("band_center_freq");
-        let bandQfactor    = document.getElementsByName("band_qfactor");
-        let bandGain       = document.getElementsByName("band_gain");
+        let dir        = "downlink";
+        let bandNumber = document.querySelector("#peq_dl_band_number").value;
+        let bandCenterFreq =
+            document.getElementsByName("peq_dl_band_center_freq");
+        let bandQfactor = document.getElementsByName("peq_dl_band_qfactor");
+        let bandGain    = document.getElementsByName("peq_dl_band_gain");
         setPeq(port, dir, bandNumber, bandCenterFreq, bandQfactor, bandGain);
     };
 
@@ -213,15 +261,15 @@ document.addEventListener('DOMContentLoaded', event => {
             reader.onload = () => {
                 console.log(reader.result);
                 // Play pcm file
-                playFile(reader.result, port, interval);
+                playFile(reader.result, port, playInterval);
             };
             reader.readAsArrayBuffer(file);
         }))
 
     // Invoked when Stop Play Button is clicked
     stopPlayButton.addEventListener("click", (() => {
-                                        clearInterval(interval.id);
-                                        interval.id = null;
+                                        clearInterval(playInterval.id);
+                                        playInterval.id = null;
                                     }))
 
     // Print promise rejection

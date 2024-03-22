@@ -90,19 +90,19 @@ async function binToRaw(buf, path)
                 let strIndex = raw_msg.index[0].toString();
                 let strMode  = raw_msg.mode[0].toString();
 
-                let sampleRate = new Uint16Array(1);
-                BSTREAM_TO_UINT16(raw_msg.sample_rate, sampleRate);
-                let strSampleRate = sampleRate[0].toString();
+                let sampleRate = 0;
+                sampleRate = BSTREAM_TO_UINT16(raw_msg.sample_rate);
+                let strSampleRate = sampleRate.toString();
 
                 // Combined into a file name
                 let fileName = strSobj + "_" + strDir + "_" + strIndex + "_" +
                                strMode + "_" + strSampleRate + ".pcm";
 
                 let fileFlag     = 0;
-                let audioDataLen = new Uint16Array(1);
-                BSTREAM_TO_UINT16(raw_msg.length, audioDataLen);
+                let audioDataLen = 0;
+                audioDataLen = BSTREAM_TO_UINT16(raw_msg.length);
                 let audioData = new Uint8Array(
-                    buf.slice(frameEnd, frameEnd + audioDataLen[0]));
+                    buf.slice(frameEnd, frameEnd + audioDataLen));
 
                 for (let i = 0; i < fileNameList.length; i++)
                 {
@@ -150,12 +150,12 @@ async function binToRaw(buf, path)
             break;
         }
 
-        let len = new Uint16Array(1);
         // raw_msg.pn_length is the length of (frame - 6).
-        BSTREAM_TO_UINT16(raw_msg.pn_length, len);
-        len[0] += PHONET_LEN_OFFSET;
-        frameStart += len[0];
-        frameEnd += len[0];
+        let len = 0;
+        len = BSTREAM_TO_UINT16(raw_msg.pn_length);
+        len += PHONET_LEN_OFFSET;
+        frameStart += len;
+        frameEnd += len;
     }
 
     // Close raw file

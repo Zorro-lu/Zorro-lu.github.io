@@ -11,13 +11,16 @@ let OBJ = {
     ACORE_DSP_SINK : 6,
     ACORE_DSP_GAIN : 7,
     ACORE_DSP_AGC : 8,
-    ACORE_DSP_DRC : 9,
-    ACORE_DSP_PEQ_UL : 10,
-    ACORE_DSP_PEQ_DL : 11,
-    ACORE_DSP_AEC : 12,
-    ACORE_DSP_NS : 13,
-    OBJ_ACORE_DSP_ASP : 14,
-    ACORE_DSP : 15,
+    ACORE_DSP_DRC_UL : 9,
+    ACORE_DSP_DRC_DL : 10,
+    ACORE_DSP_PEQ_UL : 11,
+    ACORE_DSP_PEQ_DL : 12,
+    ACORE_DSP_AEC : 13,
+    ACORE_DSP_NS : 14,
+    ACORE_DSP_ASP : 15,
+    ACORE_DSP : 16,
+    ACORE_DSP_MBDRC : 17,
+    ACORE_DSP_IIR_FILTER : 18,
 };
 
 /**
@@ -35,6 +38,11 @@ let SNIFFER_INDEX = {
     PAD_0 : 0, // default port
     PAD_1 : 1,
     PAD_2 : 2,
+};
+
+let AUDIO_TOOL = {
+    NULL : 0,
+    FILE : 1,
 };
 
 let SNIFFER_ENABLE_MASK    = 0xFE;
@@ -70,8 +78,12 @@ function UINT32_TO_BSTREAM(n, p)
  */
 function BSTREAM_TO_UINT16(p, n)
 {
-    n[0] = p[0] << 8;
-    n[0] = p[1] | n[0];
+    return (p[0] << 8) | p[1];
+}
+
+function BSTREAM_TO_UINT32(p)
+{
+    return (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
 }
 
 /**
@@ -97,6 +109,8 @@ let FRAME_TYPE = {
  */
 let HAL_Audio_HW_Control_Request     = 0x1B;
 let HAL_Audio_HW_Control_Response    = 0x1C;
+let HAL_Audio_HW_Read_Request        = 0x1D;
+let HAL_Audio_HW_Read_Response       = 0x1E;
 let HAL_Audio_Buffers_Request        = 0x30;
 let HAL_Audio_Buffers_Response       = 0x31;
 let HAL_Audio_Config_Request         = 0x32;
@@ -111,22 +125,26 @@ let HAL_Audio_Tone_Generate_Request  = 0x00;
 /**
  * @brief Audio Sub-Block IDs
  */
-let HAL_Audio_SB_Primary_Spkr_Settings = 0x0002;
-let HAL_Audio_SB_UL_AGC_Flag           = 0x0009;
-let HAL_Audio_SB_UL_AGC_Attack_Time_ms = 0x0010;
-let HAL_Audio_SB_UL_AGC_Decay_Time_ms  = 0x0011;
-let HAL_Audio_SB_UL_AGC_Target         = 0x0012;
-let HAL_Audio_SB_UL_DRC_Attack_Time_ms = 0x0013;
-let HAL_Audio_SB_UL_DRC_Decay_Time_ms  = 0x0014;
-let HAL_Audio_SB_UL_DRC_Gain           = 0x0015;
-let HAL_Audio_SB_UL_DRC_Knee_Threshold = 0x0016;
-let HAL_Audio_SB_UL_DRC_Noise_Gate     = 0x0017;
-let HAL_Audio_SB_UL_DRC_Slope          = 0x0018;
-let HAL_Audio_SB_UL_PEQ_Center_Freq    = 0x0019;
-let HAL_Audio_SB_UL_PEQ_Qfactor        = 0x001a;
-let HAL_Audio_SB_UL_PEQ_Gain           = 0x001b;
-let HAL_Audio_SB_Sniffer_Enable        = 0x0034;
-let HAL_Audio_SB_Sniffer_Activate      = 0x0035;
+let HAL_Audio_SB_Primary_Spkr_Settings       = 0x0002;
+let HAL_Audio_SB_UL_AGC_Flag                 = 0x0009;
+let HAL_Audio_SB_UL_AGC_Attack_Time_ms       = 0x0010;
+let HAL_Audio_SB_UL_AGC_Decay_Time_ms        = 0x0011;
+let HAL_Audio_SB_UL_AGC_Target               = 0x0012;
+let HAL_Audio_SB_UL_DRC_Attack_Time_ms       = 0x0013;
+let HAL_Audio_SB_UL_DRC_Decay_Time_ms        = 0x0014;
+let HAL_Audio_SB_UL_DRC_Gain                 = 0x0015;
+let HAL_Audio_SB_UL_DRC_Knee_Threshold       = 0x0016;
+let HAL_Audio_SB_UL_DRC_Noise_Gate           = 0x0017;
+let HAL_Audio_SB_UL_DRC_Slope                = 0x0018;
+let HAL_Audio_SB_UL_PEQ_Center_Freq          = 0x0019;
+let HAL_Audio_SB_UL_PEQ_Qfactor              = 0x001a;
+let HAL_Audio_SB_UL_PEQ_Gain                 = 0x001b;
+let HAL_Audio_SB_MCPS                        = 0x0032;
+let HAL_Audio_SB_Sniffer_Enable              = 0x0034;
+let HAL_Audio_SB_Sniffer_Activate            = 0x0035;
+let HAL_Audio_SB_UL_MBDRC_Bound_High         = 0x001c;
+let HAL_Audio_SB_UL_MBDRC_Compress_Threshold = 0x001d;
+let HAL_Audio_SB_UL_MBDRC_Compress_Slope     = 0x001e;
 
 /**
  * @brief Phonet protocol header length offset
@@ -281,6 +299,7 @@ function setGain(string, port)
 
 /**
  * @brief Transfer DRC parameters via serial port
+ * @param dir The direction of audio stream.
  * @param attack_time_str The attack time parameter.
  * @param decay_time_str The decay time parameter.
  * @param knee_threshold_str The knee threshold parameter.
@@ -288,10 +307,10 @@ function setGain(string, port)
  * @param slope_str The slope parameter.
  * @param port The port of serial
  */
-function setDrc(port, attack_time_str, decay_time_str, knee_threshold_str,
+function setDrc(port, dir, attack_time_str, decay_time_str, knee_threshold_str,
                 noise_gate_str, slope_str)
 {
-    if ((!port) || (attack_time_str.length === 0) ||
+    if ((!port) || (dir.length === 0) || (attack_time_str.length === 0) ||
         (decay_time_str.length === 0) || (knee_threshold_str.length === 0) ||
         (noise_gate_str.length === 0) || (slope_str.length === 0))
     {
@@ -406,7 +425,16 @@ function setDrc(port, attack_time_str, decay_time_str, knee_threshold_str,
     acore_msg.pn_rdev[0] = MSG_EP_AGENT.DSP;
     acore_msg.pn_sdev[0] = MSG_EP_AGENT.DSP;
     UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
-    acore_msg.pn_robj[0] = OBJ.ACORE_DSP_DRC;
+
+    if (dir === "uplink")
+    {
+        acore_msg.pn_robj[0] = OBJ.ACORE_DSP_DRC_UL;
+    }
+    else if (dir === "downlink")
+    {
+        acore_msg.pn_robj[0] = OBJ.ACORE_DSP_DRC_DL;
+    }
+
     acore_msg.pn_sobj[0] = OBJ.ACORE_TOOL;
     acore_msg.msg_id[0]  = HAL_Audio_HW_Control_Request;
     UINT16_TO_BSTREAM(numOfSubblocks, acore_msg.num_of_subblocks);
@@ -645,6 +673,194 @@ function setAgc(port, attack_time_str, decay_time_str, target_str)
 }
 
 /**
+ * @brief Transfer MBDRC parameters via serial port.
+ * @param port The port of serial.
+ * @param band_num_str The band number parameter.
+ * @param high_bound_str The frequency high bound parameter.
+ * @param compress_threshold_str The compress threshold parameter.
+ * @param compress_slope_str The compress slope parameter.
+ */
+function setMbdrc(port, band_num_str, high_bound_str, compress_threshold_str,
+                  compress_slope_str)
+{
+    if ((!port) || (high_bound_str.length === 0) ||
+        (compress_threshold_str.length === 0) ||
+        (compress_slope_str.length === 0))
+    {
+        log("Please check MBDRC parameters or WebUSB connection.");
+        return;
+    }
+    // Coverts the string to a decimal int
+    let band_num = parseInt(band_num_str, 10);
+
+    let frameTypeSize  = 2;
+    let numOfSubblocks = 3;
+    let frameType      = new Uint8Array(frameTypeSize);
+
+    // Audio core message format
+    let acore_msg = {
+        pn_media : new Uint8Array(1), /**< Media type (link-layer identifier) */
+        pn_rdev : new Uint8Array(1),  /**< Receiver device ID */
+        pn_sdev : new Uint8Array(1),  /**< Sender device ID */
+        pn_res : new Uint8Array(1),   /**< Resource ID or function */
+        pn_length :
+            new Uint8Array(2), /**< Big-endian message byte length (minus 6) */
+        pn_robj : new Uint8Array(1),  /**< Receiver object ID */
+        pn_sobj : new Uint8Array(1),  /**< Sender object ID */
+        trans_id : new Uint8Array(1), /**< Transaction id */
+        msg_id : new Uint8Array(1),   /**< Message id */
+        num_of_subblocks :
+            new Uint8Array(2), /**< Number of sub blocks to be request */
+    };
+
+    // Audio sub block frequency high bound settings
+    let mbdrc_high_bound = {
+        block_id : new Uint8Array(2),  /**< Block id */
+        block_len : new Uint8Array(2), /**< Block length */
+        number : new Uint8Array(2),    /**< Number of band */
+        // 36 = band_num * sizeof(float), band_num = 9
+        high_bound : new Int8Array(36), /**< High bound */
+    };
+
+    // Audio sub block compress threshold settings
+    let mbdrc_compress_threshold = {
+        block_id : new Uint8Array(2),  /**< Block id */
+        block_len : new Uint8Array(2), /**< Block length */
+        number : new Uint8Array(2),    /**< Number of band */
+        // 18 = band_num * sizeof(short), band_num = 9
+        compress_threshold : new Int8Array(18), /**< Threshold */
+    };
+
+    // Audio sub block compress slope settings
+    let mbdrc_compress_slope = {
+        block_id : new Uint8Array(2),  /**< Block id */
+        block_len : new Uint8Array(2), /**< Block length */
+        number : new Uint8Array(2),    /**< Number of band */
+        // 36 = band_num * sizeof(float), band_num = 9
+        compress_slope : new Int8Array(36), /**< Slope */
+    };
+
+    // count high_bound size
+    let mbdrc_high_bound_size = 0;
+    for (let prop in mbdrc_high_bound)
+    {
+        let array = mbdrc_high_bound[prop];
+        mbdrc_high_bound_size += array.BYTES_PER_ELEMENT * array.length;
+    }
+    let mbdrc_compress_threshold_size = mbdrc_high_bound_size;
+    let mbdrc_compress_slope_size     = mbdrc_high_bound_size;
+
+    // count acore_msg size
+    let acore_msg_size = 0;
+    for (let prop in acore_msg)
+    {
+        let array = acore_msg[prop];
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
+    }
+
+    // The length of audio core message
+    let pnLength = acore_msg_size + mbdrc_high_bound_size +
+                   mbdrc_compress_threshold_size + mbdrc_compress_slope_size -
+                   PHONET_LEN_OFFSET;
+
+    // The size of Frame
+    let totalBytes = pnLength + frameTypeSize + PHONET_LEN_OFFSET;
+
+    // Set the type of Frame
+    UINT16_TO_BSTREAM(FRAME_TYPE.ACORE_MESSAGE, frameType);
+
+    // Set the parameters of acore_msg
+    acore_msg.pn_rdev[0] = MSG_EP_AGENT.DSP;
+    acore_msg.pn_sdev[0] = MSG_EP_AGENT.DSP;
+    UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
+    acore_msg.pn_robj[0] = OBJ.ACORE_DSP_MBDRC;
+    acore_msg.pn_sobj[0] = OBJ.ACORE_TOOL;
+    acore_msg.msg_id[0]  = HAL_Audio_HW_Control_Request;
+    UINT16_TO_BSTREAM(numOfSubblocks, acore_msg.num_of_subblocks);
+
+    // Set the parameters of mbdrc_high_bound
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_MBDRC_Bound_High,
+                      mbdrc_high_bound.block_id);
+    UINT16_TO_BSTREAM(mbdrc_high_bound_size, mbdrc_high_bound.block_len);
+    UINT16_TO_BSTREAM(band_num, mbdrc_high_bound.number);
+    for (let i = 0; i < band_num; i++)
+    {
+        console.log(high_bound_str[i].value);
+        let high_bound = parseInt(high_bound_str[i].value, 10);
+        // 4 = sizeof(int)
+        let temp_buf = new Int8Array(4);
+        UINT32_TO_BSTREAM(high_bound, temp_buf);
+        mbdrc_high_bound.high_bound.set(temp_buf, i * temp_buf.length);
+    }
+
+    // Set the parameters of mbdrc_compress_threshold
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_MBDRC_Compress_Threshold,
+                      mbdrc_compress_threshold.block_id);
+    UINT16_TO_BSTREAM(mbdrc_compress_threshold_size,
+                      mbdrc_compress_threshold.block_len);
+    UINT16_TO_BSTREAM(band_num, mbdrc_compress_threshold.number);
+    for (let i = 0; i < band_num; i++)
+    {
+        console.log(compress_threshold_str[i].value);
+        let compress_threshold = parseInt(compress_threshold_str[i].value, 10);
+        // 2 = sizeof(short)
+        let temp_buf = new Int8Array(2);
+        UINT16_TO_BSTREAM(compress_threshold, temp_buf);
+        mbdrc_compress_threshold.compress_threshold.set(temp_buf,
+                                                        i * temp_buf.length);
+    }
+
+    // Set the parameters of mbdrc_compress_slope
+    UINT16_TO_BSTREAM(HAL_Audio_SB_UL_MBDRC_Compress_Slope,
+                      mbdrc_compress_slope.block_id);
+    UINT16_TO_BSTREAM(mbdrc_compress_slope_size,
+                      mbdrc_compress_slope.block_len);
+    UINT16_TO_BSTREAM(band_num, mbdrc_compress_slope.number);
+    for (let i = 0; i < band_num; i++)
+    {
+        console.log(compress_slope_str[i].value);
+        let compress_slope     = parseFloat(compress_slope_str[i].value);
+        let compress_slope_buf = Float32Array.from([ compress_slope ]).buffer;
+        let temp_buf           = new Int8Array(compress_slope_buf);
+        mbdrc_compress_slope.compress_slope.set(temp_buf, i * temp_buf.length);
+    }
+
+    // copy acore_msg data to acoreMsg
+    let acoreMsg = new Uint8Array(acore_msg_size);
+    setMsg(acoreMsg, acore_msg);
+
+    // copy mbdrc_high_bound data to mbdrcHighBoundMsg
+    let mbdrcHighBoundMsg = new Uint8Array(mbdrc_high_bound_size);
+    setMsg(mbdrcHighBoundMsg, mbdrc_high_bound);
+
+    // copy mbdrc_compress_threshold data to mbdrcCompressThresholdMsg
+    let mbdrcCompressThresholdMsg =
+        new Uint8Array(mbdrc_compress_threshold_size);
+    setMsg(mbdrcCompressThresholdMsg, mbdrc_compress_threshold);
+
+    // copy mbdrc_compress_slope data to mbdrcCompressSlopeMsg
+    let mbdrcCompressSlopeMsg = new Uint8Array(mbdrc_compress_slope_size);
+    setMsg(mbdrcCompressSlopeMsg, mbdrc_compress_slope);
+
+    // Combine messages to one frame
+    let frame = new Uint8Array(totalBytes);
+    frame.set(frameType, 0);
+    frame.set(acoreMsg, frameType.length);
+    frame.set(mbdrcHighBoundMsg, frameType.length + acoreMsg.length);
+    frame.set(mbdrcCompressThresholdMsg,
+              frameType.length + acoreMsg.length + mbdrcHighBoundMsg.length);
+    frame.set(mbdrcCompressSlopeMsg, frameType.length + acoreMsg.length +
+                                         mbdrcHighBoundMsg.length +
+                                         mbdrcCompressThresholdMsg.length);
+    console.log(frame);
+
+    if (port)
+    {
+        port.send(frame);
+    }
+}
+
+/**
  * @brief Transfer PEQ parameters via serial port.
  * @param port The port of serial.
  * @param dir The direction of audio stream.
@@ -783,6 +999,7 @@ function setPeq(port, dir, band_num_str, band_center_freq_str, band_qfactor_str,
     UINT16_TO_BSTREAM(band_num, peq_band_qfactor.number);
     for (let i = 0; i < band_num; i++)
     {
+        console.log(band_qfactor_str[i].value);
         let band_qfactor     = parseFloat(band_qfactor_str[i].value);
         let band_qfactor_buf = Float32Array.from([ band_qfactor ]).buffer;
         let temp_buf         = new Int8Array(band_qfactor_buf);
@@ -902,9 +1119,19 @@ function snifferEnable(port, obj, enable, dir)
         acore_msg.pn_robj[0] = OBJ.ACORE_DSP_AGC;
         break;
 
-    case "ACORE_DSP_DRC_IN":
-    case "ACORE_DSP_DRC_OUT":
-        acore_msg.pn_robj[0] = OBJ.ACORE_DSP_DRC;
+    case "ACORE_DSP_DRC_UL_IN":
+    case "ACORE_DSP_DRC_UL_OUT":
+        acore_msg.pn_robj[0] = OBJ.ACORE_DSP_DRC_UL;
+        break;
+
+    case "ACORE_DSP_DRC_DL_IN":
+    case "ACORE_DSP_DRC_DL_OUT":
+        acore_msg.pn_robj[0] = OBJ.ACORE_DSP_DRC_DL;
+        break;
+
+    case "ACORE_DSP_MBDRC_IN":
+    case "ACORE_DSP_MBDRC_OUT":
+        acore_msg.pn_robj[0] = OBJ.ACORE_DSP_MBDRC;
         break;
 
     case "ACORE_DSP_PEQ_UL_IN":
@@ -1027,11 +1254,13 @@ function snifferActive(port, active)
 
     if (active === true)
     {
-        snifferState = 1;
+        snifferState     = 1;
+        function_modules = AUDIO_TOOL.FILE;
     }
     else if (active === false)
     {
-        snifferState = 0;
+        snifferState     = 0;
+        function_modules = AUDIO_TOOL.NULL;
     }
 
     let acore_msg = {
@@ -1116,6 +1345,102 @@ function setSniffer(port, obj_str)
 }
 
 /**
+ * @brief Read the MCPS of the algorithm from AP5.
+ */
+function readMcps(port, object)
+{
+    if (!port)
+    {
+        log("Please check WebUSB connection.");
+        return;
+    }
+
+    let frameTypeSize  = 2;
+    let numOfSubblocks = 1;
+    let subblocksSize  = 2;
+    let frameType      = new Uint8Array(frameTypeSize);
+    let subblockId     = new Uint8Array(subblocksSize);
+
+    // Audio core message format
+    let acore_msg = {
+        pn_media : new Uint8Array(1), /**< Media type (link-layer identifier) */
+        pn_rdev : new Uint8Array(1),  /**< Receiver device ID */
+        pn_sdev : new Uint8Array(1),  /**< Sender device ID */
+        pn_res : new Uint8Array(1),   /**< Resource ID or function */
+        pn_length :
+            new Uint8Array(2), /**< Big-endian message byte length (minus 6) */
+        pn_robj : new Uint8Array(1),  /**< Receiver object ID */
+        pn_sobj : new Uint8Array(1),  /**< Sender object ID */
+        trans_id : new Uint8Array(1), /**< Transaction id */
+        msg_id : new Uint8Array(1),   /**< Message id */
+        num_of_subblocks :
+            new Uint8Array(2), /**< Number of sub blocks to be request */
+    };
+
+    // count acore_msg size
+    let acore_msg_size = 0;
+    for (let prop in acore_msg)
+    {
+        let array = acore_msg[prop];
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
+    }
+
+    // The length of audio core message
+    let pnLength = acore_msg_size + subblocksSize - PHONET_LEN_OFFSET;
+
+    // Set the type of Frame
+    let totalBytes = pnLength + frameTypeSize + PHONET_LEN_OFFSET;
+
+    // Set the type of Frame
+    UINT16_TO_BSTREAM(FRAME_TYPE.ACORE_MESSAGE, frameType);
+
+    // Set the parameters of acore_msg
+    acore_msg.pn_rdev[0] = MSG_EP_AGENT.DSP;
+    acore_msg.pn_sdev[0] = MSG_EP_AGENT.DSP;
+    UINT16_TO_BSTREAM(pnLength, acore_msg.pn_length);
+    acore_msg.pn_robj[0] = object;
+    acore_msg.pn_sobj[0] = OBJ.ACORE_TOOL;
+    acore_msg.msg_id[0]  = HAL_Audio_HW_Read_Request;
+    UINT16_TO_BSTREAM(numOfSubblocks, acore_msg.num_of_subblocks);
+
+    UINT16_TO_BSTREAM(HAL_Audio_SB_MCPS, subblockId);
+
+    // copy acore_msg data to acoreMsg
+    let acoreMsg = new Uint8Array(acore_msg_size);
+    setMsg(acoreMsg, acore_msg);
+
+    // Combine messages to one frame
+    let frame = new Uint8Array(totalBytes);
+    frame.set(frameType, 0);
+    frame.set(acoreMsg, frameType.length);
+    frame.set(subblockId, frameType.length + acoreMsg.length);
+
+    console.log(frame);
+    if (port)
+    {
+        port.send(frame);
+    }
+}
+
+/**
+ * @brief Update the MCPS of algorithms from AP5.
+ */
+function updateMcps(port)
+{
+    if (!port)
+    {
+        log("Please check WebUSB connection.");
+        return;
+    }
+
+    readMcps(port, OBJ.ACORE_DSP_AEC);
+    readMcps(port, OBJ.ACORE_DSP_NS);
+    readMcps(port, OBJ.ACORE_DSP_PEQ_UL);
+    readMcps(port, OBJ.ACORE_DSP_PEQ_DL);
+    readMcps(port, OBJ.ACORE_DSP_MBDRC);
+}
+
+/**
  * @brief Write data into the local file.
  */
 function writeBuf(buf)
@@ -1124,5 +1449,104 @@ function writeBuf(buf)
     {
         console.log("buf.byteLength " + buf.byteLength);
         window.file.write(buf);
+    }
+};
+
+function parseMsg(buf)
+{
+    let acore_msg = {
+        pn_media : new Uint8Array(1), /**< Media type (link-layer identifier) */
+        pn_rdev : new Uint8Array(1),  /**< Receiver device ID */
+        pn_sdev : new Uint8Array(1),  /**< Sender device ID */
+        pn_res : new Uint8Array(1),   /**< Resource ID or function */
+        pn_length :
+            new Uint8Array(2), /**< Big-endian message byte length (minus 6) */
+        pn_robj : new Uint8Array(1), /**< Receiver object ID */
+        pn_sobj : new Uint8Array(1), /**< Sender object ID */
+
+        trans_id : new Uint8Array(1), /**< Transaction id */
+        msg_id : new Uint8Array(1),   /**< Message id */
+        num_of_subblocks :
+            new Uint8Array(2), /**< Number of sub blocks to be request */
+        subblocks_id : new Uint8Array(2),  /**< Sub Block id */
+        subblocks_len : new Uint8Array(2), /**< Sub Block length */
+        mcps : new Int8Array(4),           /**< The mcps of algorithm */
+    };
+
+    // count acore_msg size
+    let acore_msg_size = 0;
+    for (let prop in acore_msg)
+    {
+        let array = acore_msg[prop];
+        acore_msg_size += array.BYTES_PER_ELEMENT * array.length;
+    }
+
+    BSTREAM_TO_OBJECT(buf, acore_msg);
+    if ((acore_msg.pn_rdev[0] == MSG_EP_AGENT.DSP) &&
+        (acore_msg.pn_sdev[0] == MSG_EP_AGENT.DSP))
+    {
+        // Determine whether it is Audio Hardware Read Response
+        if (acore_msg.msg_id[0] == HAL_Audio_HW_Read_Response)
+        {
+            switch (acore_msg.pn_sobj[0])
+            {
+            case OBJ.ACORE_DSP_AEC:
+                mcps.aec = BSTREAM_TO_UINT32(acore_msg.mcps);
+                mcps.number++;
+                break;
+
+            case OBJ.ACORE_DSP_NS:
+                mcps.ns = BSTREAM_TO_UINT32(acore_msg.mcps);
+                mcps.number++;
+                break;
+
+            case OBJ.ACORE_DSP_PEQ_UL:
+                mcps.peqUl = BSTREAM_TO_UINT32(acore_msg.mcps);
+                mcps.number++;
+                break;
+
+            case OBJ.ACORE_DSP_PEQ_DL:
+                mcps.peqDl = BSTREAM_TO_UINT32(acore_msg.mcps);
+                mcps.number++;
+                break;
+
+            case OBJ.ACORE_DSP_MBDRC:
+                mcps.mbdrc = BSTREAM_TO_UINT32(acore_msg.mcps);
+                mcps.number++;
+                break;
+
+            default:
+                break;
+            }
+
+            if (mcps.number === 5)
+            {
+                mcps.number = 0;
+                updateMcpsChart();
+            }
+        }
+    }
+}
+/**
+ * @brief Receive acore message from AP5 through webUSB.
+ */
+function receiveMsg(buf)
+{
+    if (function_modules === AUDIO_TOOL.FILE)
+    {
+        if (window.file)
+        {
+            console.log("buf.byteLength " + buf.byteLength);
+            window.file.write(buf);
+        }
+    }
+    else
+    {
+        let uint8Buf = new Uint8Array(buf.byteLength);
+        for (let i = 0; i < buf.byteLength; i++)
+        {
+            uint8Buf[i] = buf.getUint8(i);
+        }
+        parseMsg(uint8Buf);
     }
 };
